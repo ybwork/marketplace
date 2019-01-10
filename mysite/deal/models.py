@@ -6,3 +6,10 @@ class Status(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Commission(models.Model):
+    percent = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return '{} %'.format(self.percent)
