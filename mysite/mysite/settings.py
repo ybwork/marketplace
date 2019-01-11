@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'deal',
     'django_extensions',
+    'user'
 ]
 
 MIDDLEWARE = [
@@ -93,7 +94,6 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
