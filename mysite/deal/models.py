@@ -24,13 +24,13 @@ class Offer(models.Model):
     time_on_pay = models.IntegerField()
 
     class Meta:
-        verbose_name = 'My offer'
+        verbose_name = 'Offer'
 
     def __str__(self):
         return self.name
 
 
-class OfferProxy(Offer):
-    class Meta:
-        proxy = True
-        verbose_name = 'All offer'
+# class OfferProxy(Offer):
+#     class Meta:
+#         proxy = True
+#         verbose_name = 'All offer'
