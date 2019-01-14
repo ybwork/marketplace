@@ -19,6 +19,7 @@ class OfferListFilter(admin.SimpleListFilter):
 
 class OfferAdmin(admin.ModelAdmin):
     exclude = ('user',)
+    list_display = ('name', 'price', 'limit_days_on_pay')
     list_filter = (OfferListFilter,)
 
     def save_model(self, request, obj, form, change):
