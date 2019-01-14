@@ -27,6 +27,7 @@ class Offer(models.Model):
         return self.name
 
 
-class NewOffer(Offer):
+class OfferProxy(Offer):
     class Meta:
         proxy = True
+        verbose_name = 'All offer'

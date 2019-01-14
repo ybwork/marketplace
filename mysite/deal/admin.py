@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from deal.models import Status, Commission, Offer, NewOffer
+from deal.models import Status, Commission, Offer, OfferProxy
 
 
 class OfferAdmin(admin.ModelAdmin):
@@ -24,6 +24,9 @@ class AllOffersAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).exclude(user=request.user)
+
 
 class CommissionAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
@@ -35,4 +38,4 @@ class CommissionAdmin(admin.ModelAdmin):
 admin.site.register(Status)
 admin.site.register(Commission, CommissionAdmin)
 admin.site.register(Offer, OfferAdmin)
-admin.site.register(NewOffer, AllOffersAdmin)
+admin.site.register(OfferProxy, AllOffersAdmin)
