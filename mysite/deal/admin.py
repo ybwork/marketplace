@@ -31,9 +31,7 @@ class OfferAdmin(admin.ModelAdmin):
             return self.is_owner(current_user=request.user, owner_offer=obj.user)
 
     def is_owner(self, current_user, owner_offer):
-        if current_user == owner_offer:
-            return True
-        return False
+        return current_user == owner_offer
 
     def has_delete_permission(self, request, obj=None):
         if obj:
