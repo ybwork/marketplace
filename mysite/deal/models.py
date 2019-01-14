@@ -28,9 +28,3 @@ class Offer(models.Model):
 
     def __str__(self):
         return self.name
-
-
-# class OfferProxy(Offer):
-#     class Meta:
-#         proxy = True
-#         verbose_name = 'All offer'

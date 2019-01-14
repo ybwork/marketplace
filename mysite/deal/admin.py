@@ -26,22 +26,18 @@ class OfferAdmin(admin.ModelAdmin):
         obj.user = request.user
         obj.save()
 
-    # def get_queryset(self, request):
-    #     return super().get_queryset(request).filter(user=request.user)
+    def has_change_permission(self, request, obj=None):
+        if obj:
+            return self.is_owner(current_user=request.user, owner_offer=obj.user)
 
+    def is_owner(self, current_user, owner_offer):
+        if current_user == owner_offer:
+            return True
+        return False
 
-# class AllOffersAdmin(admin.ModelAdmin):
-#     def has_add_permission(self, request):
-#         return False
-#
-#     def has_change_permission(self, request, obj=None):
-#         return False
-#
-#     def has_delete_permission(self, request, obj=None):
-#         return False
-#
-#     def get_queryset(self, request):
-#         return super().get_queryset(request).exclude(user=request.user)
+    def has_delete_permission(self, request, obj=None):
+        if obj:
+            return self.is_owner(current_user=request.user, owner_offer=obj.user)
 
 
 class CommissionAdmin(admin.ModelAdmin):
@@ -54,4 +50,3 @@ class CommissionAdmin(admin.ModelAdmin):
 admin.site.register(Status)
 admin.site.register(Commission, CommissionAdmin)
 admin.site.register(Offer, OfferAdmin)
-# admin.site.register(OfferProxy, AllOffersAdmin)
