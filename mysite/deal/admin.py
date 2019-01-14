@@ -1,16 +1,15 @@
 from django.contrib import admin
 
 from deal.models import Status, Commission, Offer
-from django.utils.translation import ugettext_lazy as _
 
 
 class OfferListFilter(admin.SimpleListFilter):
-    title = _('My offers')
+    title = 'My offers'
     parameter_name = 'filter'
 
     def lookups(self, request, model_admin):
         return (
-            ('my', _('My offers')),
+            ('my', 'My offers'),
         )
 
     def queryset(self, request, queryset):
