@@ -25,3 +25,8 @@ class Offer(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class NewOffer(Offer):
+    class Meta:
+        proxy = True
