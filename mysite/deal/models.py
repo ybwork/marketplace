@@ -23,5 +23,8 @@ class Offer(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     time_on_pay = models.IntegerField()
 
+    class Meta:
+        verbose_name = 'Offer'
+
     def __str__(self):
         return self.name

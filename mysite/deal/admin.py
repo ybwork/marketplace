@@ -3,15 +3,38 @@ from django.contrib import admin
 from deal.models import Status, Commission, Offer
 
 
+class OfferListFilter(admin.SimpleListFilter):
+    title = 'My offers'
+    parameter_name = 'filter'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('my', 'My offers'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'my':
+            return queryset.filter(user=request.user)
+
+
 class OfferAdmin(admin.ModelAdmin):
     exclude = ('user',)
+    list_filter = (OfferListFilter,)
 
     def save_model(self, request, obj, form, change):
         obj.user = request.user
         obj.save()
 
-    def get_queryset(self, request):
-        return super().get_queryset(request).filter(user=request.user)
+    def has_change_permission(self, request, obj=None):
+        if obj:
+            return self.is_owner(current_user=request.user, owner_offer=obj.user)
+
+    def is_owner(self, current_user, owner_offer):
+        return current_user == owner_offer
+
+    def has_delete_permission(self, request, obj=None):
+        if obj:
+            return self.is_owner(current_user=request.user, owner_offer=obj.user)
 
 
 class CommissionAdmin(admin.ModelAdmin):
