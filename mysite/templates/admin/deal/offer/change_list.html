@@ -1,0 +1,36 @@
+{% extends 'admin/change_list.html' %}
+
+{% block result_list %}
+  <div class="results">
+      <table id="result_list">
+        <thead>
+          <tr>
+              <th scope="col" class="sortable column-name">
+                 <div class="text"><a href="?o=0">Name</a></div>
+                 <div class="clear"></div>
+              </th>
+              <th scope="col" class="sortable column-price">
+                 <div class="text"><a href="?o=1">Price</a></div>
+                 <div class="clear"></div>
+              </th>
+              <th scope="col" class="sortable column-limit_hours_on_pay">
+                 <div class="text"><a href="?o=2">Limit hours on pay</a></div>
+                 <div class="clear"></div>
+              </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for offer in offers %}
+            <tr class="row2">
+                <th class="field-name"><a href="/admin/deal/offer/2/change/"><h1>{{ offer.name }}</h1></a></th>
+                <td class="field-price">{{ offer.price }}</td>
+                <td class="field-limit_hours_on_pay">{{ offer.limit_hours_on_pay }}</td>
+                {% if offer.user == user %}
+                  <td><a href="">оформить сделку</a></td>
+                {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+{% endblock %}

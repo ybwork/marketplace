@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from deal.models import Status, Commission, Offer
+from django.template import response
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -19,7 +20,7 @@ class OfferListFilter(admin.SimpleListFilter):
 
 class OfferAdmin(admin.ModelAdmin):
     exclude = ('user',)
-    list_display = ('user', 'name', 'price', 'limit_hours_on_pay')
+    list_display = ('name', 'price', 'limit_hours_on_pay')
     list_filter = (OfferListFilter,)
 
     def save_model(self, request, obj, form, change):
@@ -36,6 +37,11 @@ class OfferAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         if obj:
             return self.is_owner(current_user=request.user, owner_offer=obj.user)
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['offers'] = Offer.objects.all()
+        return super().changelist_view(request, extra_context=extra_context)
 
 
 class CommissionAdmin(admin.ModelAdmin):
