@@ -28,3 +28,16 @@ class Offer(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Deal(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    buyer = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='buyer'
+    )
+    offer = models.ForeignKey(Offer, on_delete=models.CASCADE)
+    status = models.ForeignKey(Status, on_delete=models.CASCADE)
+    time_on_pay_expire = models.DateTimeField()
+
+
