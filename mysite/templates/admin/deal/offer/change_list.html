@@ -22,7 +22,7 @@
                     <h1>{{ offer.name }}</h1>
                 </th>
                 <td class="field-price">{{ offer.price }}</td>
-                {% if offer.user == user %}
+                {% if offer.user != user %}
                   <td><a href="">Оформить сделку</a></td>
                 {% endif %}
                 <td>

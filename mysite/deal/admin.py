@@ -43,6 +43,16 @@ class OfferAdmin(admin.ModelAdmin):
         extra_context['offers'] = Offer.objects.all()
         return super().changelist_view(request, extra_context=extra_context)
 
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['offer'] = Offer.objects.get(pk=object_id)
+        return super().change_view(
+            request,
+            object_id,
+            form_url='',
+            extra_context=extra_context
+        )
+
 
 class CommissionAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
