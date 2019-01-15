@@ -1,7 +1,9 @@
 from django.contrib import admin
 
 from deal.models import Status, Commission, Offer
-from django.template import response
+from django.http import HttpResponse
+from django.template.response import TemplateResponse
+from django.urls import path
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -51,6 +53,24 @@ class OfferAdmin(admin.ModelAdmin):
             object_id,
             form_url='',
             extra_context=extra_context
+        )
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('buy/', self.admin_site.admin_view(self.buy_view))
+        ]
+        return my_urls + urls
+
+    def buy_view(self, request):
+        context = dict(
+           self.admin_site.each_context(request),
+           my='hi',
+        )
+        return TemplateResponse(
+            request,
+            'admin/deal/offer/buy_view/buy.html',
+            context
         )
 
 
