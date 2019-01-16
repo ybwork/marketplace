@@ -23,7 +23,7 @@
                 </th>
                 <td class="field-price">{{ offer.price }}</td>
                 {% if offer.user != user %}
-                  <td><a href="">Купить</a></td>
+                  <td><a href="{% url 'admin:buy' %}">Купить</a></td>
                 {% endif %}
                 <td>
                   <a href="{% url 'admin:deal_offer_change' offer.id %}">Подробнее</a>

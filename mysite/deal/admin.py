@@ -1,9 +1,11 @@
 from django.contrib import admin
 
 from deal.models import Status, Commission, Offer
-from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import path
+from django.views.generic import FormView
+
+from deal.forms import BuyForm
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -18,6 +20,16 @@ class OfferListFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         if self.value() == 'my':
             return queryset.filter(user=request.user)
+
+
+class BuyAdminView(FormView):
+    template_name = 'deal/buy.html'
+    form_class = BuyForm
+    success_url = 'buy/'
+
+    def form_valid(self, form):
+        print('form valid')
+        return super().form_valid(form)
 
 
 class OfferAdmin(admin.ModelAdmin):
@@ -58,20 +70,23 @@ class OfferAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            path('buy/', self.admin_site.admin_view(self.buy_view))
+            path(
+                'buy/',
+                self.admin_site.admin_view(BuyAdminView.as_view()),
+                name='buy'
+            )
         ]
         return my_urls + urls
 
-    def buy_view(self, request):
-        context = dict(
-           self.admin_site.each_context(request),
-           my='hi',
-        )
-        return TemplateResponse(
-            request,
-            'admin/deal/offer/buy_view/buy.html',
-            context
-        )
+    # def buy_view(self, request):
+    #     context = dict(
+    #        self.admin_site.each_context(request),
+    #        my='hi',
+    #     )
+    #     return TemplateResponse(
+    #         request,
+    #         context=context
+    #     )
 
 
 class CommissionAdmin(admin.ModelAdmin):
