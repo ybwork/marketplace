@@ -1,8 +1,23 @@
 {% extends "admin/base_site.html" %}
 
 {% block content %}
-  <form action="" method="POST">
+  <form action="{% url 'admin:buy' view.kwargs.offer_pk %}" method="POST">
     {% csrf_token %}
-    <!--<input type="submit" value="Submit">-->
+    {{ form.non_field_errors }}
+
+    {{ form.amount.errors }}
+    <p>
+        <label for="{{ form.amount.id_for_label }}">Your amount pay:</label>
+        {{ form.amount }}
+    </p>
+
+    {{ form.invoice.errors }}
+    <p>
+      <label for="{{ form.invoice.id_for_label }}">Invoice:</label>
+      {{ form.invoice }}
+      <a href="{% url 'admin:user_invoice_add' %}">Create</a>
+    </p>
+
+    <input type="submit" value="Submit">
   </form>
 {% endblock %}

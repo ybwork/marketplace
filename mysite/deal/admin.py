@@ -1,9 +1,8 @@
 from django.contrib import admin
 
 from deal.models import Status, Commission, Offer
-from django.template.response import TemplateResponse
-from django.urls import path
-from django.views.generic import FormView, DetailView
+from django.urls import path, reverse, reverse_lazy
+from django.views.generic import FormView
 
 from deal.forms import BuyForm
 
@@ -20,6 +19,22 @@ class OfferListFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         if self.value() == 'my':
             return queryset.filter(user=request.user)
+
+
+class BuyAdminView(FormView):
+    template_name = 'deal/buy.html'
+    form_class = BuyForm
+    success_url = reverse_lazy('admin:deal_offer_changelist')
+
+    def get_context_data(self, **kwargs):
+        self.form_class.base_fields['invoice'].queryset = \
+            self.form_class.base_fields['invoice']\
+                .queryset.filter(user=self.request.user)
+        return super().get_context_data(**kwargs)
+
+    def form_valid(self, form):
+        # Будет отправка данных в банк клиент
+        return super().form_valid(form)
 
 
 class OfferAdmin(admin.ModelAdmin):
@@ -57,28 +72,12 @@ class OfferAdmin(admin.ModelAdmin):
             extra_context=extra_context
         )
 
-    def buy_view(self, request, offer_pk):
-        form = BuyForm()
-        if form.is_valid():
-            print('valid')
-        print('not')
-        context = dict(
-           self.admin_site.each_context(request),
-           my='hi',
-        )
-        return TemplateResponse(
-            request,
-            'deal/buy.html',
-            context=context
-        )
-
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
             path(
                 '<int:offer_pk>/buy/',
-                # self.admin_site.admin_view(BuyAdminView.as_view()),
-                self.admin_site.admin_view(self.buy_view),
+                self.admin_site.admin_view(BuyAdminView.as_view()),
                 name='buy'
             )
         ]
