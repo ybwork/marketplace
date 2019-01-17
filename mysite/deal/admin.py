@@ -58,6 +58,10 @@ class OfferAdmin(admin.ModelAdmin):
         )
 
     def buy_view(self, request, offer_pk):
+        form = BuyForm()
+        if form.is_valid():
+            print('valid')
+        print('not')
         context = dict(
            self.admin_site.each_context(request),
            my='hi',
