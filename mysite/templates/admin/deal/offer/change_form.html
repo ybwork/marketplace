@@ -7,6 +7,6 @@
   {% endfor %}
 
   {% if offer.user != user %}
-    <a href="{% url 'admin:buy' %}">Купить</a>
+    <a href="{% url 'admin:buy' offer.pk %}">Купить</a>
   {% endif %}
 {% endblock %}

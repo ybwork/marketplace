@@ -1,10 +1,8 @@
 {% extends "admin/base_site.html" %}
 
 {% block content %}
-  <form action="{% url 'admin:buy' %}" method="POST">
+  <form action="" method="POST">
     {% csrf_token %}
-    {{ form.amount }}
-    {{ form.invoice }}
-    <input type="submit" value="Submit">
+    <!--<input type="submit" value="Submit">-->
   </form>
 {% endblock %}
