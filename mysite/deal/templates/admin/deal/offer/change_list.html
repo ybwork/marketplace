@@ -16,17 +16,19 @@
           </tr>
         </thead>
         <tbody>
-          {% for offer in offers %}
+          {% for offer in cl.queryset %}
             <tr class="row2">
                 <th class="field-name">
                     <h1>{{ offer.name }}</h1>
                 </th>
                 <td class="field-price">{{ offer.price }}</td>
                 {% if offer.user != user %}
-                  <td><a href="{% url 'admin:buy' offer.pk %}">Купить</a></td>
+                  <td><a href="{% url 'admin:buy' offer.pk %}">Deal</a></td>
                 {% endif %}
                 <td>
-                  <a href="{% url 'admin:deal_offer_change' offer.id %}">Подробнее</a>
+                  <a href="{% url 'admin:deal_offer_change' offer.id %}">
+                    More...
+                  </a>
                 </td>
             </tr>
           {% endfor %}
