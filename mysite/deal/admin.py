@@ -1,5 +1,6 @@
 from django.contrib import admin
 from deal.models import Status, Commission, Offer
+from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse, reverse_lazy
@@ -59,7 +60,16 @@ class OfferAdmin(admin.ModelAdmin):
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
-        extra_context['offer'] = Offer.objects.get(pk=object_id)
+
+        try:
+            extra_context['offer'] = Offer.objects.get(pk=object_id)
+        except ObjectDoesNotExist:
+            self._get_obj_does_not_exist_redirect(
+                request,
+                opts=self.model._meta,
+                object_id=object_id
+            )
+
         return super().change_view(
             request,
             object_id,
@@ -84,10 +94,17 @@ class OfferAdmin(admin.ModelAdmin):
         return my_urls + urls
 
     def offer_confirm_view(self, request, offer_pk):
-        context = dict(
-            offer = get_object_or_404(Offer, pk=offer_pk)
-        )
-        return TemplateResponse(request, 'offer/confirm.html', context)
+        try:
+            context = dict(
+                offer=Offer.objects.get(pk=offer_pk)
+            )
+            return TemplateResponse(request, 'offer/confirm.html', context)
+        except ObjectDoesNotExist:
+            return self._get_obj_does_not_exist_redirect(
+                request,
+                opts=self.model._meta,
+                object_id=str(offer_pk)
+            )
 
 
 class CommissionAdmin(admin.ModelAdmin):
