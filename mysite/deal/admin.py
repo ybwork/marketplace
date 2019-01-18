@@ -55,11 +55,6 @@ class OfferAdmin(admin.ModelAdmin):
         if obj:
             return self.is_owner(current_user=request.user, owner_offer=obj.user)
 
-    def changelist_view(self, request, extra_context=None):
-        extra_context = extra_context or {}
-        extra_context['offers'] = Offer.objects.all()
-        return super().changelist_view(request, extra_context=extra_context)
-
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
         extra_context['offer'] = Offer.objects.get(pk=object_id)
