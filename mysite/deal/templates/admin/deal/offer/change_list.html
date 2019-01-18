@@ -1,0 +1,38 @@
+{% extends 'admin/change_list.html' %}
+
+{% block result_list %}
+  <div class="results">
+      <table id="result_list">
+        <thead>
+          <tr>
+              <th scope="col" class="sortable column-name">
+                 <div class="text"><a href="?o=0">Name</a></div>
+                 <div class="clear"></div>
+              </th>
+              <th scope="col" class="sortable column-price">
+                 <div class="text"><a href="?o=1">Price</a></div>
+                 <div class="clear"></div>
+              </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for offer in cl.queryset %}
+            <tr class="row2">
+                <th class="field-name">
+                    <h1>{{ offer.name }}</h1>
+                </th>
+                <td class="field-price">{{ offer.price }}</td>
+                {% if offer.user != user %}
+                  <td><a href="{% url 'admin:buy' offer.pk %}">Deal</a></td>
+                {% endif %}
+                <td>
+                  <a href="{% url 'admin:deal_offer_change' offer.id %}">
+                    More...
+                  </a>
+                </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+{% endblock %}

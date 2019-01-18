@@ -1,6 +1,8 @@
 from django.contrib import admin
-
 from deal.models import Status, Commission, Offer
+from django.urls import path, reverse, reverse_lazy
+from django.views.generic import FormView
+from deal.forms import BuyForm
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -17,8 +19,25 @@ class OfferListFilter(admin.SimpleListFilter):
             return queryset.filter(user=request.user)
 
 
+class BuyAdminView(FormView):
+    template_name = 'deal/buy.html'
+    form_class = BuyForm
+    success_url = reverse_lazy('admin:deal_offer_changelist')
+
+    def get_context_data(self, **kwargs):
+        self.form_class.base_fields['invoice'].queryset = \
+            self.form_class.base_fields['invoice']\
+                .queryset.filter(user=self.request.user)
+        return super().get_context_data(**kwargs)
+
+    def form_valid(self, form):
+        # Будет отправка данных в банк клиент
+        return super().form_valid(form)
+
+
 class OfferAdmin(admin.ModelAdmin):
     exclude = ('user',)
+    list_display = ('name', 'price')
     list_filter = (OfferListFilter,)
 
     def save_model(self, request, obj, form, change):
@@ -35,6 +54,32 @@ class OfferAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         if obj:
             return self.is_owner(current_user=request.user, owner_offer=obj.user)
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['offers'] = Offer.objects.all()
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['offer'] = Offer.objects.get(pk=object_id)
+        return super().change_view(
+            request,
+            object_id,
+            form_url='',
+            extra_context=extra_context
+        )
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path(
+                '<int:offer_pk>/buy/',
+                self.admin_site.admin_view(BuyAdminView.as_view()),
+                name='buy'
+            )
+        ]
+        return my_urls + urls
 
 
 class CommissionAdmin(admin.ModelAdmin):
