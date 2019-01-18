@@ -1,5 +1,7 @@
 from django.contrib import admin
 from deal.models import Status, Commission, Offer
+from django.shortcuts import redirect, get_object_or_404
+from django.template.response import TemplateResponse
 from django.urls import path, reverse, reverse_lazy
 from django.views.generic import FormView
 from deal.forms import BuyForm
@@ -55,11 +57,6 @@ class OfferAdmin(admin.ModelAdmin):
         if obj:
             return self.is_owner(current_user=request.user, owner_offer=obj.user)
 
-    def changelist_view(self, request, extra_context=None):
-        extra_context = extra_context or {}
-        extra_context['offers'] = Offer.objects.all()
-        return super().changelist_view(request, extra_context=extra_context)
-
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
         extra_context['offer'] = Offer.objects.get(pk=object_id)
@@ -77,9 +74,20 @@ class OfferAdmin(admin.ModelAdmin):
                 '<int:offer_pk>/buy/',
                 self.admin_site.admin_view(BuyAdminView.as_view()),
                 name='buy'
-            )
+            ),
+            path(
+                '<int:offer_pk>/confirm',
+                self.admin_site.admin_view(self.offer_confirm_view),
+                name='offer_confirm'
+            ),
         ]
         return my_urls + urls
+
+    def offer_confirm_view(self, request, offer_pk):
+        context = dict(
+            offer = get_object_or_404(Offer, pk=offer_pk)
+        )
+        return TemplateResponse(request, 'offer/confirm.html', context)
 
 
 class CommissionAdmin(admin.ModelAdmin):
