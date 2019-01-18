@@ -84,6 +84,9 @@ class OfferAdmin(admin.ModelAdmin):
 
 class CommissionAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
+        if not request.user.is_superuser:
+            return False
+
         if Commission.objects.exists():
             return False
         return True
