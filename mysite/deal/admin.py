@@ -1,9 +1,7 @@
 from django.contrib import admin
-
 from deal.models import Status, Commission, Offer
 from django.urls import path, reverse, reverse_lazy
 from django.views.generic import FormView
-
 from deal.forms import BuyForm
 
 
