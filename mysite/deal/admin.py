@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from django.contrib import admin
 from deal.models import Status, Commission, Offer
 from django.core.exceptions import ObjectDoesNotExist
@@ -6,6 +8,8 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse, reverse_lazy
 from django.views.generic import FormView
 from deal.forms import BuyForm
+
+from deal.models import Deal
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -95,16 +99,36 @@ class OfferAdmin(admin.ModelAdmin):
 
     def offer_confirm_view(self, request, offer_pk):
         try:
-            context = dict(
-                offer=Offer.objects.get(pk=offer_pk)
-            )
-            return TemplateResponse(request, 'offer/confirm.html', context)
+            offer = Offer.objects.get(pk=offer_pk)
         except ObjectDoesNotExist:
             return self._get_obj_does_not_exist_redirect(
                 request,
                 opts=self.model._meta,
                 object_id=str(offer_pk)
             )
+
+        if request.method == 'POST':
+            status, created = Status.objects.get_or_create(
+                name='Активна',
+                defaults={
+                    'name': 'Активна'
+                }
+            )
+            deal = Deal.objects.create(
+                user=request.user,
+                buyer=offer.user,
+                offer=offer,
+                status=status,
+                time_on_pay_expire=datetime.now() + timedelta(
+                    hours=offer.limit_hours_on_pay
+                )
+            )
+            return redirect(reverse('admin:user_invoice_changelist'))
+
+        context = dict(
+            offer=offer
+        )
+        return TemplateResponse(request, 'offer/confirm.html', context)
 
 
 class CommissionAdmin(admin.ModelAdmin):
