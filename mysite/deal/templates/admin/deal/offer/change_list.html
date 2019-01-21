@@ -6,11 +6,11 @@
         <thead>
           <tr>
               <th scope="col" class="sortable column-name">
-                 <div class="text"><a href="?o=0">Name</a></div>
+                 <div class="text"><a href="?o=0">Имя</a></div>
                  <div class="clear"></div>
               </th>
               <th scope="col" class="sortable column-price">
-                 <div class="text"><a href="?o=1">Price</a></div>
+                 <div class="text"><a href="?o=1">Цена</a></div>
                  <div class="clear"></div>
               </th>
           </tr>
@@ -23,12 +23,15 @@
                 </th>
                 <td class="field-price">{{ offer.price }}</td>
                 {% if offer.user != user %}
-                  <td><a href="{% url 'admin:offer_confirm' offer.pk %}">Deal
-                  </a></td>
+                  <td>
+                    <a href="{% url 'admin:offer_confirm' offer.pk %}">
+                      Сделка
+                    </a>
+                  </td>
                 {% endif %}
                 <td>
                   <a href="{% url 'admin:deal_offer_change' offer.pk %}">
-                    More...
+                    Смотреть полностью...
                   </a>
                 </td>
             </tr>

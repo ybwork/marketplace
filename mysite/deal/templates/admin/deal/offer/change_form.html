@@ -6,9 +6,9 @@
     {% include 'admin/includes/fieldset.html' %}
   {% endfor %}
 
-  {% url 'admin:deal_offer_change' as offer_change_url %}
+  {% url 'admin:deal_offer_add' as offer_add_url %}
 
-  {% if request.path == offer_change_url and offer.user != user %}
-    <a href="{% url 'admin:offer_confirm' offer.pk %}">Deal</a>
+  {% if request.path != offer_add_url and offer.user != user %}
+    <a href="{% url 'admin:offer_confirm' offer.pk %}">Сделка</a>
   {% endif %}
 {% endblock %}

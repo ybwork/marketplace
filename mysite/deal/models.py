@@ -5,12 +5,20 @@ from django.db import models
 class Status(models.Model):
     name = models.CharField(max_length=50)
 
+    class Meta:
+        verbose_name = 'статус сделки'
+        verbose_name_plural = 'Статусы сделки'
+
     def __str__(self):
         return self.name
 
 
 class Commission(models.Model):
     percent = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        verbose_name = 'комиссия'
+        verbose_name_plural = 'Комиссия'
 
     def __str__(self):
         return '{} %'.format(self.percent)
@@ -24,7 +32,8 @@ class Offer(models.Model):
     limit_hours_on_pay = models.IntegerField()
 
     class Meta:
-        verbose_name = 'Offer'
+        verbose_name = 'предложение'
+        verbose_name_plural = 'Предложения'
 
     def __str__(self):
         return self.name
@@ -42,6 +51,10 @@ class Deal(models.Model):
     offer = models.ForeignKey(Offer, on_delete=models.CASCADE)
     status = models.ForeignKey(Status, on_delete=models.CASCADE)
     time_on_pay_expire = models.DateTimeField()
+
+    class Meta:
+        verbose_name = 'сделка'
+        verbose_name_plural = 'Сделки'
 
     def __str__(self):
         return self.offer.name

@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from deal.models import Status, Commission, Offer, Deal
 from django.core.exceptions import ObjectDoesNotExist
+from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse, reverse_lazy
@@ -12,12 +13,12 @@ from deal.forms import DealPayForm
 
 
 class OfferListFilter(admin.SimpleListFilter):
-    title = 'My offers'
+    title = 'Предложения'
     parameter_name = 'filter'
 
     def lookups(self, request, model_admin):
         return (
-            ('my', 'My offers'),
+            ('my', 'Мои'),
         )
 
     def queryset(self, request, queryset):
@@ -67,11 +68,12 @@ class OfferAdmin(admin.ModelAdmin):
         try:
             extra_context['offer'] = Offer.objects.get(pk=object_id)
         except ObjectDoesNotExist:
-            self._get_obj_does_not_exist_redirect(
+            self.message_user(
                 request,
-                opts=self.model._meta,
-                object_id=object_id
+                'Объект не найден',
+                messages.WARNING
             )
+            return redirect(reverse('admin:index', current_app=self.admin_site.name))
 
         return super().change_view(
             request,
@@ -100,11 +102,12 @@ class OfferAdmin(admin.ModelAdmin):
         try:
             offer = Offer.objects.get(pk=offer_pk)
         except ObjectDoesNotExist:
-            return self._get_obj_does_not_exist_redirect(
+            self.message_user(
                 request,
-                opts=self.model._meta,
-                object_id=str(offer_pk)
+                'Объект не найден',
+                messages.WARNING
             )
+            return redirect(reverse('admin:index', current_app=self.admin_site.name))
 
         if request.method == 'POST':
             deal = self.create_deal(request, offer)
@@ -117,9 +120,9 @@ class OfferAdmin(admin.ModelAdmin):
 
     def create_deal(self, request, offer):
         status, created = Status.objects.get_or_create(
-            name='Active',
+            name='Активна',
             defaults={
-                'name': 'Active'
+                'name': 'Активна'
             }
         )
         return Deal.objects.create(

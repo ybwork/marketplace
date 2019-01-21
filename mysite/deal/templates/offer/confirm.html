@@ -1,4 +1,24 @@
-<form action="{% url 'admin:offer_confirm' offer.pk %}" method="POST">
-  {% csrf_token %}
-  <input type="submit" value="Yes, I'am sure">
-</form>
+{% extends 'admin/base.html' %}
+
+{% load i18n static %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a></h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block content %}
+    <h1>Вы уверенны?</h1>
+
+    <form action="{% url 'admin:offer_confirm' offer.pk %}" method="POST">
+        {% csrf_token %}
+        <div>
+            <input type="submit" value="Да, я уверен">
+            <a href="{{ request.META.HTTP_REFERER }}">Вернуться назад</a>
+        </div>
+    </form>
+{% endblock content %}
