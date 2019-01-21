@@ -1,0 +1,4 @@
+<form action="{% url 'admin:offer_confirm' offer.pk %}" method="POST">
+  {% csrf_token %}
+  <input type="submit" value="Yes, I'am sure">
+</form>
