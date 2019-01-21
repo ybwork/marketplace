@@ -31,7 +31,10 @@ class Offer(models.Model):
 
 
 class Deal(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    owner = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='owner'
+    )
     buyer = models.ForeignKey(
         User, on_delete=models.CASCADE,
         related_name='buyer'
@@ -40,4 +43,5 @@ class Deal(models.Model):
     status = models.ForeignKey(Status, on_delete=models.CASCADE)
     time_on_pay_expire = models.DateTimeField()
 
-
+    def __str__(self):
+        return self.offer.name

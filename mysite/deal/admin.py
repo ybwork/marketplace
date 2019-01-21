@@ -1,14 +1,12 @@
 from datetime import datetime, timedelta
 
 from django.contrib import admin
-from deal.models import Status, Commission, Offer
+from deal.models import Status, Commission, Offer, Deal
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse, reverse_lazy
 from django.views.generic import FormView
-
-from deal.models import Deal
 
 from deal.forms import DealPayForm
 
@@ -121,11 +119,11 @@ class OfferAdmin(admin.ModelAdmin):
         status, created = Status.objects.get_or_create(
             name='Активна',
             defaults={
-                'name': 'Активна'
+                'name': 'Active'
             }
         )
         return Deal.objects.create(
-            user=request.user,
+            owner=request.user,
             buyer=offer.user,
             offer=offer,
             status=status,
@@ -145,6 +143,12 @@ class CommissionAdmin(admin.ModelAdmin):
         return True
 
 
+class DealAdmin(admin.ModelAdmin):
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(owner=request.user)
+
+
 admin.site.register(Status)
 admin.site.register(Commission, CommissionAdmin)
 admin.site.register(Offer, OfferAdmin)
+admin.site.register(Deal, DealAdmin)
