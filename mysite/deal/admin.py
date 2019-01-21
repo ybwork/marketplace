@@ -117,7 +117,7 @@ class OfferAdmin(admin.ModelAdmin):
 
     def create_deal(self, request, offer):
         status, created = Status.objects.get_or_create(
-            name='Активна',
+            name='Active',
             defaults={
                 'name': 'Active'
             }
