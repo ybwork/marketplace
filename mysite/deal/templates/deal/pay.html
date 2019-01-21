@@ -7,17 +7,17 @@
 
     {{ form.amount.errors }}
     <p>
-        <label for="{{ form.amount.id_for_label }}">Money:</label>
+        <label for="{{ form.amount.id_for_label }}">Сумма:</label>
         {{ form.amount }}
     </p>
 
     {{ form.invoice.errors }}
     <p>
-      <label for="{{ form.invoice.id_for_label }}">Invoice:</label>
+      <label for="{{ form.invoice.id_for_label }}">Счёт:</label>
       {{ form.invoice }}
-      <a href="{% url 'admin:user_invoice_add' %}">Create</a>
+      <a href="{% url 'admin:user_invoice_add' %}">Создать</a>
     </p>
 
-    <input type="submit" value="Submit">
+    <input type="submit" value="Оплатить">
   </form>
 {% endblock %}

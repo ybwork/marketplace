@@ -12,12 +12,12 @@ from deal.forms import DealPayForm
 
 
 class OfferListFilter(admin.SimpleListFilter):
-    title = 'My offers'
+    title = 'Предложения'
     parameter_name = 'filter'
 
     def lookups(self, request, model_admin):
         return (
-            ('my', 'My offers'),
+            ('my', 'Мои'),
         )
 
     def queryset(self, request, queryset):
@@ -117,9 +117,9 @@ class OfferAdmin(admin.ModelAdmin):
 
     def create_deal(self, request, offer):
         status, created = Status.objects.get_or_create(
-            name='Active',
+            name='Активна',
             defaults={
-                'name': 'Active'
+                'name': 'Активна'
             }
         )
         return Deal.objects.create(
