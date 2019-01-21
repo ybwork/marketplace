@@ -33,11 +33,11 @@ class Offer(models.Model):
 class Deal(models.Model):
     owner = models.ForeignKey(
         User, on_delete=models.CASCADE,
-        related_name='owner'
+        related_name='deals_by_owner'
     )
     buyer = models.ForeignKey(
         User, on_delete=models.CASCADE,
-        related_name='buyer'
+        related_name='deals_by_buyer'
     )
     offer = models.ForeignKey(Offer, on_delete=models.CASCADE)
     status = models.ForeignKey(Status, on_delete=models.CASCADE)
