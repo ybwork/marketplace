@@ -1,5 +1,9 @@
+import decimal
+import json
 from datetime import datetime, timedelta
 
+import request as request
+import requests
 from django.contrib import admin, messages
 from deal.models import Status, Commission, Offer, Deal
 from django.core.exceptions import ObjectDoesNotExist
@@ -32,6 +36,7 @@ class DealPayAdminView(FormView):
     success_url = reverse_lazy('admin:deal_offer_changelist')
 
     def get_context_data(self, **kwargs):
+        """Передаю банковские счета пользователя для вывода в select."""
         self.form_class.base_fields['invoice'].queryset = \
             self.form_class.base_fields['invoice']\
                 .queryset.filter(user=self.request.user)
@@ -39,6 +44,18 @@ class DealPayAdminView(FormView):
 
     def form_valid(self, form):
         # Будет отправка данных в банк клиент
+        params = {
+            'api_key': 'ccc42a8314596799',
+            'number_invoice': '5956f'
+        }
+        balance = requests.get(
+            'http://127.0.0.1:5000/balance',
+            json=params
+        )
+        balance_dict = json.loads(balance.content)['balance']
+        if decimal.Decimal(balance_dict) < Deal.objects.get(pk=self.kwargs[
+            'deal_pk']).offer.price:
+            print('no')
         return super().form_valid(form)
 
 
