@@ -5,16 +5,16 @@
     {% csrf_token %}
     {{ form.non_field_errors }}
 
-    {{ form.amount.errors }}
+    {{ form.payment_amount.errors }}
     <p>
         <label for="{{ form.amount.id_for_label }}">Сумма:</label>
-        {{ form.amount }}
+        {{ form.payment_amount }}
     </p>
 
-    {{ form.invoice.errors }}
+    {{ form.number_invoice.errors }}
     <p>
       <label for="{{ form.invoice.id_for_label }}">Счёт:</label>
-      {{ form.invoice }}
+      {{ form.number_invoice }}
       <a href="{% url 'admin:user_invoice_add' %}">Создать</a>
     </p>
 

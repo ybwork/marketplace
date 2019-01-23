@@ -1,19 +1,17 @@
-import decimal
-import json
 from datetime import datetime, timedelta
 
 import request as request
-import requests
 from django.contrib import admin, messages
 from deal.models import Status, Commission, Offer, Deal
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse, reverse_lazy
 from django.views.generic import FormView
 
 from deal.forms import DealPayForm
+
+from deal.utils import get_user_balance
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -30,32 +28,37 @@ class OfferListFilter(admin.SimpleListFilter):
             return queryset.filter(user=request.user)
 
 
-class DealPayAdminView(FormView):
+class DealPayAdminView(FormView, admin.ModelAdmin):
     template_name = 'deal/pay.html'
     form_class = DealPayForm
     success_url = reverse_lazy('admin:deal_offer_changelist')
 
     def get_context_data(self, **kwargs):
         """Передаю банковские счета пользователя для вывода в select."""
-        self.form_class.base_fields['invoice'].queryset = \
-            self.form_class.base_fields['invoice']\
+        self.form_class.base_fields['number_invoice'].queryset = \
+            self.form_class.base_fields['number_invoice']\
                 .queryset.filter(user=self.request.user)
         return super().get_context_data(**kwargs)
 
     def form_valid(self, form):
-        # Будет отправка данных в банк клиент
-        params = {
-            'api_key': 'ccc42a8314596799',
-            'number_invoice': '5956f'
-        }
-        balance = requests.get(
-            'http://127.0.0.1:5000/balance',
-            json=params
+        buyer_balance = get_user_balance(
+            number_invoice=form.cleaned_data['number_invoice']
         )
-        balance_dict = json.loads(balance.content)['balance']
-        if decimal.Decimal(balance_dict) < Deal.objects.get(pk=self.kwargs[
-            'deal_pk']).offer.price:
-            print('no')
+        payment_amount = form.cleaned_data['payment_amount']
+
+        if buyer_balance < payment_amount:
+            self.message_user(
+                request=self.request,
+                message='Нехватает денег. Пополните счет или заплатите меньше.',
+                level=messages.WARNING
+            )
+            return redirect(
+                reverse(
+                    'admin:deal_pay',
+                    kwargs={'deal_pk': self.kwargs['deal_pk']}
+                )
+            )
+
         return super().form_valid(form)
 
 
