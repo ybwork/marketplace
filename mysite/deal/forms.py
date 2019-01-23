@@ -9,6 +9,4 @@ class DealPayForm(forms.Form):
         max_digits=10,
         decimal_places=2,
     )
-    number_invoice = forms.ModelChoiceField(
-        queryset=Invoice.objects.all(),
-    )
+    invoice = forms.ModelChoiceField(queryset=Invoice.objects.all())

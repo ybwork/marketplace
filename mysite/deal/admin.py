@@ -86,23 +86,11 @@ class OfferAdmin(admin.ModelAdmin):
             form = DealPayForm()
 
             # Для вывода в select только счетов текущего пользователя
-            form.base_fields['number_invoice'].queryset = \
-                form.base_fields['number_invoice'].queryset.filter(
+            form.base_fields['invoice'].queryset = \
+                form.base_fields['invoice'].queryset.filter(
                     user=request.user
                 )
 
-            enough_money = None
-
-        if request.method == 'POST':
-            form = DealPayForm(request.POST)
-
-        if form.is_valid():
-            enough_money = compare_balance_with_payment_amount(
-                number_invoice=form.cleaned_data['number_invoice'],
-                payment_amount=form.cleaned_data['payment_amount']
-            )
-
-        if enough_money is None:
             return render(
                 request=request,
                 template_name='deal/pay.html',
@@ -112,13 +100,22 @@ class OfferAdmin(admin.ModelAdmin):
                 }
             )
 
+        if request.method == 'POST':
+            form = DealPayForm(request.POST)
+
+        if form.is_valid():
+            enough_money = compare_balance_with_payment_amount(
+                invoice=form.cleaned_data['invoice'],
+                payment_amount=form.cleaned_data['payment_amount']
+            )
+
         if enough_money:
             # редирект на окно для ввода кода для подтверждения
             pass
         else:
             self.message_user(
                 request=request,
-                message='Нехватает денег. '
+                message='Не хватает денег. '
                         'Используйте другой счет или заплатите меньше.',
                 level=messages.WARNING
             )

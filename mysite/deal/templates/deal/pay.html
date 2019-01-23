@@ -14,7 +14,7 @@
     {{ form.number_invoice.errors }}
     <p>
       <label for="{{ form.invoice.id_for_label }}">Счёт:</label>
-      {{ form.number_invoice }}
+      {{ form.invoice }}
       <a href="{% url 'admin:user_invoice_add' %}">Создать</a>
     </p>
 
