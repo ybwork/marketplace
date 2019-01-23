@@ -18,3 +18,18 @@ def get_user_balance(number_invoice):
 
     return decimal.Decimal(decoded_balance)
 
+
+def compare_balance_with_payment_amount(number_invoice, payment_amount):
+    """Сравнивает текущий баланс пользователя с суммой, которую он хочет
+    заплатить.
+
+    """
+    buyer_balance = get_user_balance(
+        number_invoice=number_invoice
+    )
+
+    if buyer_balance < payment_amount:
+        return False
+    return True
+
+

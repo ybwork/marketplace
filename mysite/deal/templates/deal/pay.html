@@ -1,7 +1,7 @@
 {% extends "admin/base_site.html" %}
 
 {% block content %}
-  <form action="{% url 'admin:deal_pay' view.kwargs.deal_pk %}" method="POST">
+  <form action="{% url 'admin:deal_pay' deal_pk %}" method="POST">
     {% csrf_token %}
     {{ form.non_field_errors }}
 

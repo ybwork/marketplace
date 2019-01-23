@@ -1,17 +1,14 @@
 from datetime import datetime, timedelta
-
-import request as request
 from django.contrib import admin, messages
 from deal.models import Status, Commission, Offer, Deal
 from django.core.exceptions import ObjectDoesNotExist
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
-from django.urls import path, reverse, reverse_lazy
-from django.views.generic import FormView
+from django.urls import path, reverse
 
 from deal.forms import DealPayForm
 
-from deal.utils import get_user_balance
+from deal.utils import compare_balance_with_payment_amount
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -26,40 +23,6 @@ class OfferListFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         if self.value() == 'my':
             return queryset.filter(user=request.user)
-
-
-class DealPayAdminView(FormView, admin.ModelAdmin):
-    template_name = 'deal/pay.html'
-    form_class = DealPayForm
-    success_url = reverse_lazy('admin:deal_offer_changelist')
-
-    def get_context_data(self, **kwargs):
-        """Передаю банковские счета пользователя для вывода в select."""
-        self.form_class.base_fields['number_invoice'].queryset = \
-            self.form_class.base_fields['number_invoice']\
-                .queryset.filter(user=self.request.user)
-        return super().get_context_data(**kwargs)
-
-    def form_valid(self, form):
-        buyer_balance = get_user_balance(
-            number_invoice=form.cleaned_data['number_invoice']
-        )
-        payment_amount = form.cleaned_data['payment_amount']
-
-        if buyer_balance < payment_amount:
-            self.message_user(
-                request=self.request,
-                message='Нехватает денег. Пополните счет или заплатите меньше.',
-                level=messages.WARNING
-            )
-            return redirect(
-                reverse(
-                    'admin:deal_pay',
-                    kwargs={'deal_pk': self.kwargs['deal_pk']}
-                )
-            )
-
-        return super().form_valid(form)
 
 
 class OfferAdmin(admin.ModelAdmin):
@@ -107,7 +70,7 @@ class OfferAdmin(admin.ModelAdmin):
         my_urls = [
             path(
                 '<int:deal_pk>/pay/',
-                self.admin_site.admin_view(DealPayAdminView.as_view()),
+                self.admin_site.admin_view(self.deal_pay_view),
                 name='deal_pay'
             ),
             path(
@@ -117,6 +80,54 @@ class OfferAdmin(admin.ModelAdmin):
             ),
         ]
         return my_urls + urls
+
+    def deal_pay_view(self, request, deal_pk):
+        if request.method == 'GET':
+            form = DealPayForm()
+
+            # Для вывода в select только счетов текущего пользователя
+            form.base_fields['number_invoice'].queryset = \
+                form.base_fields['number_invoice'].queryset.filter(
+                    user=request.user
+                )
+
+            enough_money = None
+
+        if request.method == 'POST':
+            form = DealPayForm(request.POST)
+
+        if form.is_valid():
+            enough_money = compare_balance_with_payment_amount(
+                number_invoice=form.cleaned_data['number_invoice'],
+                payment_amount=form.cleaned_data['payment_amount']
+            )
+
+        if enough_money is None:
+            return render(
+                request=request,
+                template_name='deal/pay.html',
+                context={
+                    'form': form,
+                    'deal_pk': deal_pk,
+                }
+            )
+
+        if enough_money:
+            # редирект на окно для ввода кода для подтверждения
+            pass
+        else:
+            self.message_user(
+                request=request,
+                message='Нехватает денег. '
+                        'Используйте другой счет или заплатите меньше.',
+                level=messages.WARNING
+            )
+            return redirect(
+                reverse(
+                    'admin:deal_pay',
+                    kwargs={'deal_pk': deal_pk}
+                )
+            )
 
     def offer_confirm_view(self, request, offer_pk):
         try:
