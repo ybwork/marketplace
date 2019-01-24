@@ -1,6 +1,7 @@
 import decimal
 import json
 import requests
+from django.shortcuts import redirect
 
 from mysite.settings import API_KEY
 
@@ -19,7 +20,7 @@ def get_user_balance(invoice):
     return decimal.Decimal(decoded_balance)
 
 
-def compare_balance_with_payment_amount(invoice, payment_amount):
+def is_enough_user_balance(invoice, payment_amount):
     """
     Сравнивает текущий баланс пользователя с суммой, которую он хочет
     заплатить.
@@ -27,9 +28,15 @@ def compare_balance_with_payment_amount(invoice, payment_amount):
     buyer_balance = get_user_balance(
         invoice=invoice
     )
+    return buyer_balance > payment_amount
 
-    if buyer_balance > payment_amount:
-        return True
-    return False
 
+def available_request_methods(http_methods=[]):
+    def decorator(function_to_decorate):
+        def original(self, request, *args, **kwargs):
+            if request.method not in http_methods:
+                return redirect(request.META['HTTP_REFERER'])
+            return function_to_decorate(self, request, *args, **kwargs)
+        return original
+    return decorator
 

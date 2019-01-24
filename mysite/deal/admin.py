@@ -7,8 +7,8 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
 from deal.forms import DealPayForm
-
-from deal.utils import compare_balance_with_payment_amount
+from deal.utils import available_request_methods
+from deal.utils import is_enough_user_balance
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -81,50 +81,47 @@ class OfferAdmin(admin.ModelAdmin):
         ]
         return my_urls + urls
 
-    def deal_pay_view(self, request, deal_pk):
-        if request.method == 'GET':
-            form = DealPayForm()
-
-            # Для вывода в select только счетов текущего пользователя
-            form.base_fields['invoice'].queryset = \
-                form.base_fields['invoice'].queryset.filter(
-                    user=request.user
-                )
-
-            return render(
-                request=request,
-                template_name='deal/pay.html',
-                context={
-                    'form': form,
-                    'deal_pk': deal_pk,
-                }
-            )
-
+    @available_request_methods(['GET', 'POST'])
+    def deal_pay_view( self, request, deal_pk):
         if request.method == 'POST':
             form = DealPayForm(request.POST)
+            if form.is_valid():
+                if is_enough_user_balance(
+                    invoice=form.cleaned_data['invoice'],
+                    payment_amount=form.cleaned_data['payment_amount']
+                ):
+                    # редирект на окно для ввода кода для подтверждения
+                    pass
+                else:
+                    self.message_user(
+                        request=request,
+                        message='Не хватает денег. '
+                                'Используйте другой счет или заплатите меньше.',
+                        level=messages.WARNING
+                    )
+                    return redirect(
+                        reverse(
+                            'admin:deal_pay',
+                            kwargs={'deal_pk': deal_pk}
+                        )
+                    )
 
-        if form.is_valid():
-            enough_money = compare_balance_with_payment_amount(
-                invoice=form.cleaned_data['invoice'],
-                payment_amount=form.cleaned_data['payment_amount']
+        form = DealPayForm()
+
+        # Для вывода в select счетов текущего пользователя
+        form.base_fields['invoice'].queryset = \
+            form.base_fields['invoice'].queryset.filter(
+                user=request.user
             )
 
-        if enough_money:
-            # редирект на окно для ввода кода для подтверждения
-            pass
-        else:
-            self.message_user(
-                request=request,
-                message='Не хватает денег. '
-                        'Используйте другой счет или заплатите меньше.',
-                level=messages.WARNING
-            )
-            return redirect(
-                reverse(
-                    'admin:deal_pay',
-                    kwargs={'deal_pk': deal_pk}
-                )
-            )
+        return render(
+            request=request,
+            template_name='deal/pay.html',
+            context={
+                'form': form,
+                'deal_pk': deal_pk,
+            }
+        )
 
     def offer_confirm_view(self, request, offer_pk):
         try:
