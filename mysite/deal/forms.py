@@ -13,4 +13,4 @@ class DealPayForm(forms.Form):
 
 
 class ConfirmPay(forms.Form):
-    code = forms.IntegerField()
+    code = forms.IntegerField(label='Код подтверждения')

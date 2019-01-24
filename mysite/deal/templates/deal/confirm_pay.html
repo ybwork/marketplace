@@ -1,5 +1,9 @@
 {% extends 'admin/base_site.html' %}
 
 {% block content %}
-  <p>cont</p>
+  <form action="{% url 'admin:deal_pay_confirm' deal_pk %}" method="POST">
+    {% csrf_token %}
+    {{ form }}
+    <input type="submit" value="Отправить">
+  </form>
 {% endblock content %}

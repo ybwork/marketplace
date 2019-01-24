@@ -10,6 +10,8 @@ from deal.forms import DealPayForm
 from deal.utils import available_request_methods
 from deal.utils import is_enough_user_balance
 
+from deal.forms import ConfirmPay
+
 
 class OfferListFilter(admin.SimpleListFilter):
     title = 'Предложения'
@@ -73,16 +75,6 @@ class OfferAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.offer_confirm_view),
                 name='offer_confirm'
             ),
-            path(
-                '<int:deal_pk>/pay/',
-                self.admin_site.admin_view(self.deal_pay_view),
-                name='deal_pay'
-            ),
-            path(
-                '<int:deal_pk>/pay/confirm/',
-                self.admin_site.admin_view(self.confirm_pay_view),
-                name='deal_pay_confirm'
-            ),
         ]
         return my_urls + urls
 
@@ -123,10 +115,42 @@ class OfferAdmin(admin.ModelAdmin):
             )
         )
 
+
+class CommissionAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        if not request.user.is_superuser:
+            return False
+
+        if Commission.objects.exists():
+            return False
+        return True
+
+
+class DealAdmin(admin.ModelAdmin):
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(owner=request.user)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        newurls = [
+            path(
+                '<int:deal_pk>/pay/',
+                self.admin_site.admin_view(self.deal_pay_view),
+                name='deal_pay'
+            ),
+            path(
+                '<int:deal_pk>/pay/confirm/',
+                self.admin_site.admin_view(self.confirm_pay_view),
+                name='deal_pay_confirm'
+            ),
+        ]
+        return newurls + urls
+
     @available_request_methods(['GET', 'POST'])
     def deal_pay_view(self, request, deal_pk):
         if request.method == 'POST':
             form = DealPayForm(request.POST)
+
             if form.is_valid():
                 if is_enough_user_balance(
                     invoice=form.cleaned_data['invoice'],
@@ -151,14 +175,14 @@ class OfferAdmin(admin.ModelAdmin):
                             kwargs={'deal_pk': deal_pk}
                         )
                     )
+        else:
+            form = DealPayForm()
 
-        form = DealPayForm()
-
-        # Для вывода в select счетов текущего пользователя
-        form.base_fields['invoice'].queryset = \
-            form.base_fields['invoice'].queryset.filter(
-                user=request.user
-            )
+            # Для вывода в select счетов текущего пользователя
+            form.base_fields['invoice'].queryset = \
+                form.base_fields['invoice'].queryset.filter(
+                    user=request.user
+                )
 
         return render(
             request=request,
@@ -169,27 +193,25 @@ class OfferAdmin(admin.ModelAdmin):
             }
         )
 
+    @available_request_methods(['GET', 'POST'])
     def confirm_pay_view(self, request, deal_pk):
+        if request.method == 'POST':
+            form = ConfirmPay(request.POST)
+
+            if form.is_valid():
+                # отправка кода в апи банка
+                print(deal_pk)
+        else:
+            form = ConfirmPay()
+
         return render(
             request=request,
             template_name='deal/confirm_pay.html',
-            context={}
+            context={
+                'form': form,
+                'deal_pk': deal_pk
+            }
         )
-
-
-class CommissionAdmin(admin.ModelAdmin):
-    def has_add_permission(self, request):
-        if not request.user.is_superuser:
-            return False
-
-        if Commission.objects.exists():
-            return False
-        return True
-
-
-class DealAdmin(admin.ModelAdmin):
-    def get_queryset(self, request):
-        return super().get_queryset(request).filter(owner=request.user)
 
 
 admin.site.register(Status)
