@@ -132,8 +132,12 @@ class OfferAdmin(admin.ModelAdmin):
                     invoice=form.cleaned_data['invoice'],
                     payment_amount=form.cleaned_data['payment_amount']
                 ):
-                    # редирект на окно для ввода кода для подтверждения
-                    pass
+                    return redirect(
+                        reverse(
+                            'admin:deal_pay_confirm',
+                            kwargs={'deal_pk': deal_pk}
+                        )
+                    )
                 else:
                     self.message_user(
                         request=request,
