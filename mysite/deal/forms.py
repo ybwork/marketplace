@@ -10,3 +10,7 @@ class DealPayForm(forms.Form):
         decimal_places=2,
     )
     invoice = forms.ModelChoiceField(queryset=Invoice.objects.all())
+
+
+class CodeConfirmPay(forms.Form):
+    code = forms.IntegerField()
