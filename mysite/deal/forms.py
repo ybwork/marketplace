@@ -12,5 +12,5 @@ class DealPayForm(forms.Form):
     invoice = forms.ModelChoiceField(queryset=Invoice.objects.all())
 
 
-class CodeConfirmPay(forms.Form):
+class ConfirmPay(forms.Form):
     code = forms.IntegerField()
