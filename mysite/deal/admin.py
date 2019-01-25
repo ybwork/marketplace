@@ -1,4 +1,7 @@
+import sys
 from datetime import datetime, timedelta
+
+import requests
 from django.contrib import admin, messages
 from deal.models import Status, Commission, Offer, Deal
 from django.core.exceptions import ObjectDoesNotExist
@@ -11,6 +14,8 @@ from deal.utils import available_request_methods
 from deal.utils import is_enough_user_balance
 
 from deal.forms import ConfirmPay
+
+from deal.utils import send_code_confirm_payment
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -147,15 +152,59 @@ class DealAdmin(admin.ModelAdmin):
         return newurls + urls
 
     @available_request_methods(['GET', 'POST'])
+    def confirm_pay_view(self, request, deal_pk):
+        if request.method == 'POST':
+            form = ConfirmPay(request.POST)
+
+            if form.is_valid():
+                # отправка кода в апи банка
+                print(deal_pk)
+        else:
+            form = ConfirmPay()
+
+        return render(
+            request=request,
+            template_name='deal/confirm_pay.html',
+            context={
+                'form': form,
+                'deal_pk': deal_pk
+            }
+        )
+
+    @available_request_methods(['GET', 'POST'])
     def deal_pay_view(self, request, deal_pk):
         if request.method == 'POST':
             form = DealPayForm(request.POST)
 
             if form.is_valid():
+                invoice = form.cleaned_data['invoice'].num
+                payment_amount = form.cleaned_data['payment_amount']
+                invoice_reciever = Deal.objects.get(
+                    pk=deal_pk
+                ).offer.money_to_invoice
+
+                try:
+                    is_enough_user_balance(
+                        invoice=invoice,
+                        payment_amount=payment_amount
+                    )
+                except (TypeError, requests.exceptions.ConnectionError):
+                    return redirect(
+                        reverse(
+                            'admin:deal_pay_confirm',
+                            kwargs={'deal_pk': deal_pk}
+                        )
+                    )
+
                 if is_enough_user_balance(
-                    invoice=form.cleaned_data['invoice'],
-                    payment_amount=form.cleaned_data['payment_amount']
+                    invoice=invoice,
+                    payment_amount=payment_amount
                 ):
+                    send_code_confirm_payment(
+                        amount_money=payment_amount,
+                        invoice_provider=invoice,
+                        invoice_reciever=invoice_reciever
+                    )
                     return redirect(
                         reverse(
                             'admin:deal_pay_confirm',
@@ -190,26 +239,6 @@ class DealAdmin(admin.ModelAdmin):
             context={
                 'form': form,
                 'deal_pk': deal_pk,
-            }
-        )
-
-    @available_request_methods(['GET', 'POST'])
-    def confirm_pay_view(self, request, deal_pk):
-        if request.method == 'POST':
-            form = ConfirmPay(request.POST)
-
-            if form.is_valid():
-                # отправка кода в апи банка
-                print(deal_pk)
-        else:
-            form = ConfirmPay()
-
-        return render(
-            request=request,
-            template_name='deal/confirm_pay.html',
-            context={
-                'form': form,
-                'deal_pk': deal_pk
             }
         )
 
