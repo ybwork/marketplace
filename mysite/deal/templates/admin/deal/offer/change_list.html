@@ -6,27 +6,33 @@
         <thead>
           <tr>
               <th scope="col" class="sortable column-name">
-                 <div class="text"><a href="?o=0">Name</a></div>
+                 <div class="text"><a href="?o=0">Имя</a></div>
                  <div class="clear"></div>
               </th>
               <th scope="col" class="sortable column-price">
-                 <div class="text"><a href="?o=1">Price</a></div>
+                 <div class="text"><a href="?o=1">Цена</a></div>
                  <div class="clear"></div>
               </th>
           </tr>
         </thead>
         <tbody>
-          {% for offer in offers %}
+          {% for offer in cl.queryset %}
             <tr class="row2">
                 <th class="field-name">
                     <h1>{{ offer.name }}</h1>
                 </th>
                 <td class="field-price">{{ offer.price }}</td>
                 {% if offer.user != user %}
-                  <td><a href="{% url 'admin:buy' %}">Купить</a></td>
+                  <td>
+                    <a href="{% url 'admin:offer_confirm' offer.pk %}">
+                      Сделка
+                    </a>
+                  </td>
                 {% endif %}
                 <td>
-                  <a href="{% url 'admin:deal_offer_change' offer.id %}">Подробнее</a>
+                  <a href="{% url 'admin:deal_offer_change' offer.pk %}">
+                    Смотреть полностью...
+                  </a>
                 </td>
             </tr>
           {% endfor %}

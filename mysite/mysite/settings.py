@@ -116,6 +116,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
+INTERNAL_IPS = ('127.0.0.1',)
+
+LANGUAGE_CODE = 'ru'
+USE_I18N = True
+USE_L10N = True
+
+API_KEY = 'ccc42a8314596799'
+
 from .local_settings import *
 
-INTERNAL_IPS = ('127.0.0.1',)

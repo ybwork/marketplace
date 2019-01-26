@@ -3,6 +3,14 @@ from django import forms
 from user.models import Invoice
 
 
-class BuyForm(forms.Form):
-    amount = forms.DecimalField(max_digits=10, decimal_places=2, required=False)
+class DealPayForm(forms.Form):
+    payment_amount = forms.DecimalField(
+        min_value=1,
+        max_digits=10,
+        decimal_places=2,
+    )
     invoice = forms.ModelChoiceField(queryset=Invoice.objects.all())
+
+
+class ConfirmPay(forms.Form):
+    code = forms.IntegerField(label='Код подтверждения')
