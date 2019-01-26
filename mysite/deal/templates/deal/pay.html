@@ -5,10 +5,10 @@
     {% csrf_token %}
     {{ form.non_field_errors }}
 
-    {{ form.payment_amount.errors }}
+    {{ form.amount_money.errors }}
     <p>
         <label for="{{ form.amount.id_for_label }}">Сумма:</label>
-        {{ form.payment_amount }}
+        {{ form.amount_money }}
     </p>
 
     {{ form.number_invoice.errors }}

@@ -1,13 +1,28 @@
 import decimal
 import json
 import requests
-from django.shortcuts import redirect
 
 from mysite.settings import API_KEY
 
 
-def get_user_balance(invoice):
-    balance = requests.get(
+class UnauthorizedError(Exception):
+    pass
+
+
+class InternalServerError(Exception):
+    pass
+
+
+class NotFoundError(Exception):
+    pass
+
+
+class OtherStatusCodes(Exception):
+    pass
+
+
+def get_balance_user(invoice):
+    req = requests.get(
         'http://127.0.0.1:5000/v1/invoices/{invoice}/balances'.format(
             invoice=invoice
         ),
@@ -16,32 +31,40 @@ def get_user_balance(invoice):
             'invoice': str(invoice)
         }
     )
-    decoded_balance = json.loads(balance.content)['balance']
-    return decimal.Decimal(decoded_balance)
+
+    if req.status_code == 500:
+        raise InternalServerError()
+
+    if req.status_code == 401:
+        raise UnauthorizedError()
+
+    if req.status_code == 404:
+        raise NotFoundError()
+
+    if req.status_code == 200:
+        return decimal.Decimal(
+            json.loads(req.content)['balance']
+        )
+
+    raise OtherStatusCodes()
 
 
-def send_code_confirm_payment(amount_money, invoice_provider, invoice_reciever):
-    code_confirm = requests.post(
-        'http://127.0.0.1:5000/v1/payments',
-        json={
-            'api_key': API_KEY,
-            'amount_money': amount_money,
-            'invoice_provider': invoice_provider,
-            'invoice_reciever': invoice_reciever
-        }
-    )
-    return json.loads(code_confirm)
+def pay(amount_payment, number_invoice_provider, number_invoice_reciever):
+    # code_confirm = requests.post(
+    #     'http://127.0.0.1:5000/v1/payments',
+    #     json={
+    #         'api_key': API_KEY,
+    #         'amount_payment': amount_payment,
+    #         'number_invoice_provider': number_invoice_provider,
+    #         'number_invoice_reciever': number_invoice_reciever
+    #     }
+    # )
+    # json.loads(code_confirm)
+    return True
 
 
-def is_enough_user_balance(invoice, payment_amount):
-    """
-    Сравнивает текущий баланс пользователя с суммой, которую он хочет
-    заплатить.
-    """
-    buyer_balance = get_user_balance(
-        invoice=invoice
-    )
-    return buyer_balance > payment_amount
+def confirm_payment():
+    pass
 
 
 def available_request_methods(http_methods=[]):

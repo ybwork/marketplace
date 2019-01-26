@@ -4,7 +4,7 @@ from user.models import Invoice
 
 
 class DealPayForm(forms.Form):
-    payment_amount = forms.DecimalField(
+    amount_money = forms.DecimalField(
         min_value=1,
         max_digits=10,
         decimal_places=2,

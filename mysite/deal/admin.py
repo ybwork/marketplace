@@ -1,21 +1,16 @@
-import sys
+import requests
 from datetime import datetime, timedelta
 
-import requests
 from django.contrib import admin, messages
-from deal.models import Status, Commission, Offer, Deal
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
-from deal.forms import DealPayForm
-from deal.utils import available_request_methods
-from deal.utils import is_enough_user_balance
-
-from deal.forms import ConfirmPay
-
-from deal.utils import send_code_confirm_payment
+from deal.models import Status, Commission, Offer, Deal
+from deal.forms import ConfirmPay, DealPayForm
+from deal.utils import available_request_methods, get_balance_user, pay
+from deal.utils import InternalServerError, NotFoundError, UnauthorizedError, OtherStatusCodes
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -147,19 +142,88 @@ class DealAdmin(admin.ModelAdmin):
         newurls = [
             path(
                 '<int:deal_pk>/pay/',
-                self.admin_site.admin_view(self.deal_pay_view),
+                self.admin_site.admin_view(self.pay_view),
                 name='deal_pay'
             ),
             path(
-                '<int:deal_pk>/pay/confirm/',
-                self.admin_site.admin_view(self.confirm_pay_view),
-                name='deal_pay_confirm'
+                '<int:deal_pk>/payment/confirm/',
+                self.admin_site.admin_view(self.confirm_payment_view),
+                name='deal_confirm_payment'
             ),
         ]
         return newurls + urls
 
     @available_request_methods(['GET', 'POST'])
-    def confirm_pay_view(self, request, deal_pk):
+    def pay_view(self, request, deal_pk):
+        if request.method == 'POST':
+            form = DealPayForm(request.POST)
+
+            if form.is_valid():
+                try:
+                    number_invoice_provider = form.cleaned_data['invoice'].num
+                    balance_user = get_balance_user(number_invoice_provider)
+                    amount_money = form.cleaned_data['amount_money']
+
+                    if balance_user > amount_money:
+                        number_invoice_reciever = Deal.objects.get(
+                            pk=deal_pk
+                        ).offer.money_to_invoice
+                        pay(
+                            amount_money,
+                            number_invoice_provider,
+                            number_invoice_reciever
+                        )
+                        url = 'admin:deal_confirm_payment'
+                    else:
+                        self.message_user(
+                            request,
+                            'Не хватает денег. '
+                            'Используйте другой счет или заплатите меньше.',
+                            messages.WARNING
+                        )
+                        url = 'admin:deal_pay'
+                except (
+                    requests.exceptions.ConnectionError,
+                    InternalServerError,
+                    UnauthorizedError
+                ):
+                    return render(request, 'errors/500.html')
+                except NotFoundError as error:
+                    self.message_user(
+                        request,
+                        'Расчетный счет не валидный или не существует',
+                        messages.WARNING
+                    )
+                    url = 'admin:deal_pay'
+                except OtherStatusCodes:
+                    return render(request, 'errors/500.html')
+
+                return redirect(
+                    reverse(
+                        url,
+                        kwargs={'deal_pk': deal_pk}
+                    )
+                )
+        else:
+            form = DealPayForm()
+
+            # Для вывода в select всех счетов только текущего пользователя
+            form.base_fields['invoice'].queryset = \
+                form.base_fields['invoice'].queryset.filter(
+                    user=request.user
+                )
+
+        return render(
+            request,
+            'deal/pay.html',
+            {
+                'form': form,
+                'deal_pk': deal_pk,
+            }
+        )
+
+    @available_request_methods(['GET', 'POST'])
+    def confirm_payment_view(self, request, deal_pk):
         if request.method == 'POST':
             form = ConfirmPay(request.POST)
 
@@ -171,81 +235,10 @@ class DealAdmin(admin.ModelAdmin):
 
         return render(
             request=request,
-            template_name='deal/confirm_pay.html',
+            template_name='deal/confirm_payment.html',
             context={
                 'form': form,
                 'deal_pk': deal_pk
-            }
-        )
-
-    @available_request_methods(['GET', 'POST'])
-    def deal_pay_view(self, request, deal_pk):
-        if request.method == 'POST':
-            form = DealPayForm(request.POST)
-
-            if form.is_valid():
-                invoice = form.cleaned_data['invoice'].num
-                payment_amount = form.cleaned_data['payment_amount']
-                invoice_reciever = Deal.objects.get(
-                    pk=deal_pk
-                ).offer.money_to_invoice
-
-                try:
-                    is_enough_user_balance(
-                        invoice=invoice,
-                        payment_amount=payment_amount
-                    )
-                except (TypeError, requests.exceptions.ConnectionError):
-                    return redirect(
-                        reverse(
-                            'admin:deal_pay_confirm',
-                            kwargs={'deal_pk': deal_pk}
-                        )
-                    )
-
-                if is_enough_user_balance(
-                    invoice=invoice,
-                    payment_amount=payment_amount
-                ):
-                    send_code_confirm_payment(
-                        amount_money=payment_amount,
-                        invoice_provider=invoice,
-                        invoice_reciever=invoice_reciever
-                    )
-                    return redirect(
-                        reverse(
-                            'admin:deal_pay_confirm',
-                            kwargs={'deal_pk': deal_pk}
-                        )
-                    )
-                else:
-                    self.message_user(
-                        request=request,
-                        message='Не хватает денег. '
-                                'Используйте другой счет или заплатите меньше.',
-                        level=messages.WARNING
-                    )
-                    return redirect(
-                        reverse(
-                            'admin:deal_pay',
-                            kwargs={'deal_pk': deal_pk}
-                        )
-                    )
-        else:
-            form = DealPayForm()
-
-            # Для вывода в select счетов текущего пользователя
-            form.base_fields['invoice'].queryset = \
-                form.base_fields['invoice'].queryset.filter(
-                    user=request.user
-                )
-
-        return render(
-            request=request,
-            template_name='deal/pay.html',
-            context={
-                'form': form,
-                'deal_pk': deal_pk,
             }
         )
 
