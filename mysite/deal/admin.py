@@ -52,6 +52,13 @@ class OfferAdmin(admin.ModelAdmin):
         if obj:
             return self.is_owner(current_user=request.user, owner_offer=obj.user)
 
+    def add_view(self, request, form_url='', extra_context=None):
+        return super().add_view(
+            request,
+            form_url='',
+            extra_context=None
+        )
+
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
 
