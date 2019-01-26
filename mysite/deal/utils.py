@@ -3,6 +3,7 @@ import json
 import requests
 
 from mysite.settings import API_KEY
+from django.shortcuts import redirect
 
 
 class UnauthorizedError(Exception):
@@ -49,18 +50,30 @@ def get_balance_user(invoice):
     raise OtherStatusCodes()
 
 
-def pay(amount_payment, number_invoice_provider, number_invoice_reciever):
-    # code_confirm = requests.post(
-    #     'http://127.0.0.1:5000/v1/payments',
-    #     json={
-    #         'api_key': API_KEY,
-    #         'amount_payment': amount_payment,
-    #         'number_invoice_provider': number_invoice_provider,
-    #         'number_invoice_reciever': number_invoice_reciever
-    #     }
-    # )
-    # json.loads(code_confirm)
-    return True
+def pay(amount_money, number_invoice_provider, number_invoice_reciever):
+    req = requests.post(
+        'http://127.0.0.1:5000/v1/payments',
+        json={
+            'api_key': API_KEY,
+            'amount_money': str(amount_money),
+            'number_invoice_provider': number_invoice_provider,
+            'number_invoice_reciever': number_invoice_reciever
+        }
+    )
+
+    if req.status_code == 500:
+        raise InternalServerError()
+
+    if req.status_code == 401:
+        raise UnauthorizedError()
+
+    if req.status_code == 404:
+        raise NotFoundError()
+
+    if req.status_code == 200:
+        return True
+
+    raise OtherStatusCodes()
 
 
 def confirm_payment():

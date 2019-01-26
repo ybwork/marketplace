@@ -167,7 +167,7 @@ class DealAdmin(admin.ModelAdmin):
                     if balance_user > amount_money:
                         number_invoice_reciever = Deal.objects.get(
                             pk=deal_pk
-                        ).offer.money_to_invoice
+                        ).offer.money_to_invoice.num
                         pay(
                             amount_money,
                             number_invoice_provider,
