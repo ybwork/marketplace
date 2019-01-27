@@ -10,9 +10,14 @@ class NotFoundError(Exception):
     pass
 
 
+class BadRequestError(Exception):
+    pass
+
+
 class OtherStatusCodes(Exception):
     pass
 
 
 class NotEnoughMoney(Exception):
     pass
+

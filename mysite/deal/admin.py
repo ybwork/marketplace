@@ -7,11 +7,11 @@ from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
-from deal.models import Status, Commission, Offer, Deal
+from deal.models import Status, Commission, Offer, Deal, Payment, StatusPayment
 from deal.forms import ConfirmPay, DealPayForm
-from deal.utils import available_request_methods, get_balance_user, pay, check_user_balance
+from deal.utils import available_request_methods, get_balance_user, pay, check_user_balance, confirm_payment
 from deal.exceptions import InternalServerError, NotFoundError, UnauthorizedError, \
-    OtherStatusCodes, NotEnoughMoney
+    BadRequestError, OtherStatusCodes, NotEnoughMoney
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -147,7 +147,7 @@ class DealAdmin(admin.ModelAdmin):
                 name='deal_pay'
             ),
             path(
-                '<int:deal_pk>/payment/confirm/',
+                'payment/<int:payment_pk>/confirm/',
                 self.admin_site.admin_view(self.confirm_payment_view),
                 name='deal_confirm_payment'
             ),
@@ -179,10 +179,15 @@ class DealAdmin(admin.ModelAdmin):
                 amount_money_payment = form.cleaned_data['amount_money']
                 check_user_balance(number_invoice_provider, amount_money_payment)
 
-                number_invoice_reciever = Deal.objects.get(
-                    pk=deal_pk
-                ).offer.money_to_invoice.num
+                deal = Deal.objects.get(pk=deal_pk)
+                number_invoice_reciever = deal.offer.money_to_invoice.num
                 pay(
+                    amount_money_payment,
+                    number_invoice_provider,
+                    number_invoice_reciever
+                )
+                payment = self.create_payment(
+                    deal,
                     amount_money_payment,
                     number_invoice_provider,
                     number_invoice_reciever
@@ -191,7 +196,7 @@ class DealAdmin(admin.ModelAdmin):
                 return redirect(
                     reverse(
                         'admin:deal_confirm_payment',
-                        kwargs={'deal_pk': deal_pk}
+                        kwargs={'payment_pk': payment.pk}
                     )
                 )
             except (
@@ -200,6 +205,18 @@ class DealAdmin(admin.ModelAdmin):
                 UnauthorizedError
             ):
                 return render(request, 'errors/500.html')
+            except ObjectDoesNotExist:
+                self.message_user(
+                    request,
+                    'Нет такой сделки',
+                    messages.WARNING
+                )
+                return redirect(
+                    reverse(
+                        'admin:deal_pay',
+                        kwargs={'deal_pk': deal_pk},
+                    )
+                )
             except NotEnoughMoney:
                 self.message_user(
                     request,
@@ -237,23 +254,95 @@ class DealAdmin(admin.ModelAdmin):
                 }
             )
 
-    @available_request_methods(['GET', 'POST'])
-    def confirm_payment_view(self, request, deal_pk):
-        if request.method == 'POST':
-            form = ConfirmPay(request.POST)
+    def create_payment(self, deal, amount_money_payment, number_invoice_provider, number_invoice_reciever):
+        status, created = StatusPayment.objects.get_or_create(
+            name='не подтвержден',
+            defaults={
+                'name': 'не подтвержден'
+            }
+        )
+        return Payment.objects.create(
+            deal=deal,
+            number_invoice_provider=number_invoice_provider,
+            number_invoice_reciever=number_invoice_reciever,
+            amount_money=amount_money_payment,
+            status=status
+        )
 
-            if form.is_valid():
-                # отправка кода в апи банка
-                print(deal_pk)
-        else:
+    @available_request_methods(['GET', 'POST'])
+    def confirm_payment_view(self, request, payment_pk):
+        if request.method == 'GET':
             form = ConfirmPay()
+            return render(
+                request,
+                'deal/confirm_payment.html',
+                {
+                    'form': form,
+                    'payment_pk': payment_pk
+                }
+            )
+
+        form = ConfirmPay(request.POST)
+        if form.is_valid():
+            try:
+                invoice = Payment.objects.get(
+                    pk=payment_pk
+                ).number_invoice_provider
+                key_payment = confirm_payment(
+                    invoice,
+                    form.cleaned_data['code_confirm']
+                )
+                print(key_payment)
+                # отправим задачу на операцию платежа в celery
+                self.message_user(
+                    request,
+                    'Платеж обрабатывается. Можете продолжить работу.',
+                    messages.WARNING
+                )
+                return redirect(
+                    reverse(
+                        'admin:deal_offer_changelist'
+                    )
+                )
+            except ObjectDoesNotExist:
+                self.message_user(
+                    request,
+                    'Нет такой сделки',
+                    messages.WARNING
+                )
+                return redirect(
+                    reverse(
+                        'admin:deal_confirm_payment',
+                        kwargs={'payment_pk': payment_pk},
+                    )
+                )
+            except (
+                requests.exceptions.ConnectionError,
+                InternalServerError,
+                UnauthorizedError
+            ):
+                return render(request, 'errors/500.html')
+            except BadRequestError:
+                self.message_user(
+                    request,
+                    'Не правильный код подтверждения',
+                    messages.WARNING
+                )
+                return redirect(
+                    reverse(
+                        'admin:deal_confirm_payment',
+                        kwargs={'payment_pk': payment_pk}
+                    )
+                )
+            except OtherStatusCodes:
+                render(request, 'errors/500.html')
 
         return render(
-            request=request,
-            template_name='deal/confirm_payment.html',
-            context={
+            request,
+            'deal/confirm_payment.html',
+            {
                 'form': form,
-                'deal_pk': deal_pk
+                'payment_pk': payment_pk
             }
         )
 

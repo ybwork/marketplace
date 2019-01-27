@@ -61,3 +61,17 @@ class Deal(models.Model):
 
     def __str__(self):
         return self.offer.name
+
+
+class StatusPayment(models.Model):
+    name = models.CharField(max_length=255, db_index=True)
+
+
+class Payment(models.Model):
+    deal = models.ForeignKey(Deal, on_delete=models.CASCADE)
+    number_invoice_provider = models.CharField(max_length=5)
+    number_invoice_reciever = models.CharField(max_length=5)
+    key = models.CharField(max_length=5, default='')
+    amount_money = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.ForeignKey(StatusPayment, on_delete=models.CASCADE)
+
