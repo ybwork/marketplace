@@ -29,8 +29,8 @@ class OfferListFilter(admin.SimpleListFilter):
 
 
 class OfferAdmin(admin.ModelAdmin):
-    exclude = ('user',)
-    list_display = ('name', 'price')
+    exclude = ('user', 'money_to_invoice')
+    list_display = ('title', 'price')
     list_filter = (OfferListFilter,)
 
     def save_model(self, request, obj, form, change):
@@ -137,6 +137,9 @@ class CommissionAdmin(admin.ModelAdmin):
 class DealAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).filter(owner=request.user)
+
+    def changelist_view(self, request, extra_context=None):
+        return super().changelist_view(request, extra_context)
 
     def get_urls(self):
         urls = super().get_urls()
@@ -285,15 +288,16 @@ class DealAdmin(admin.ModelAdmin):
         form = ConfirmPay(request.POST)
         if form.is_valid():
             try:
-                invoice = Payment.objects.get(
-                    pk=payment_pk
-                ).number_invoice_provider
+                payment = Payment.objects.get(pk=payment_pk)
                 key_payment = confirm_payment(
-                    invoice,
+                    payment.number_invoice_provider,
                     form.cleaned_data['code_confirm']
                 )
-                print(key_payment)
+                payment.key = key_payment
+                payment.save()
+
                 # отправим задачу на операцию платежа в celery
+
                 self.message_user(
                     request,
                     'Платеж обрабатывается. Можете продолжить работу.',
