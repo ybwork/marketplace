@@ -2,24 +2,12 @@ import decimal
 import json
 import requests
 
-from mysite.settings import API_KEY
 from django.shortcuts import redirect
 
+from mysite.settings import API_KEY
 
-class UnauthorizedError(Exception):
-    pass
-
-
-class InternalServerError(Exception):
-    pass
-
-
-class NotFoundError(Exception):
-    pass
-
-
-class OtherStatusCodes(Exception):
-    pass
+from deal.exceptions import InternalServerError, UnauthorizedError, NotFoundError, OtherStatusCodes, \
+    NotEnoughMoney
 
 
 def get_balance_user(invoice):
@@ -32,22 +20,32 @@ def get_balance_user(invoice):
             'invoice': str(invoice)
         }
     )
+    check_status_code(req.status_code)
+    return decimal.Decimal(
+        json.loads(req.content)['balance']
+    )
 
-    if req.status_code == 500:
+
+def check_status_code(status_code):
+    if status_code == 200:
+        return True
+
+    if status_code == 500:
         raise InternalServerError()
 
-    if req.status_code == 401:
+    if status_code == 401:
         raise UnauthorizedError()
 
-    if req.status_code == 404:
+    if status_code == 404:
         raise NotFoundError()
 
-    if req.status_code == 200:
-        return decimal.Decimal(
-            json.loads(req.content)['balance']
-        )
-
     raise OtherStatusCodes()
+
+
+def check_user_balance(invoice, amount_money_payment):
+    balance = get_balance_user(invoice)
+    if balance < amount_money_payment:
+        raise NotEnoughMoney()
 
 
 def pay(amount_money, number_invoice_provider, number_invoice_reciever):
@@ -60,20 +58,7 @@ def pay(amount_money, number_invoice_provider, number_invoice_reciever):
             'number_invoice_reciever': number_invoice_reciever
         }
     )
-
-    if req.status_code == 500:
-        raise InternalServerError()
-
-    if req.status_code == 401:
-        raise UnauthorizedError()
-
-    if req.status_code == 404:
-        raise NotFoundError()
-
-    if req.status_code == 200:
-        return True
-
-    raise OtherStatusCodes()
+    return check_status_code(req.status_code)
 
 
 def confirm_payment():

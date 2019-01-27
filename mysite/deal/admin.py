@@ -9,8 +9,9 @@ from django.urls import path, reverse
 
 from deal.models import Status, Commission, Offer, Deal
 from deal.forms import ConfirmPay, DealPayForm
-from deal.utils import available_request_methods, get_balance_user, pay
-from deal.utils import InternalServerError, NotFoundError, UnauthorizedError, OtherStatusCodes
+from deal.utils import available_request_methods, get_balance_user, pay, check_user_balance
+from deal.exceptions import InternalServerError, NotFoundError, UnauthorizedError, \
+    OtherStatusCodes, NotEnoughMoney
 
 
 class OfferListFilter(admin.SimpleListFilter):
@@ -79,13 +80,13 @@ class OfferAdmin(admin.ModelAdmin):
         my_urls = [
             path(
                 '<int:offer_pk>/confirm/',
-                self.admin_site.admin_view(self.offer_confirm_view),
+                self.admin_site.admin_view(self.confirm_offer_view),
                 name='offer_confirm'
             ),
         ]
         return my_urls + urls
 
-    def offer_confirm_view(self, request, offer_pk):
+    def confirm_offer_view(self, request, offer_pk):
         try:
             offer = Offer.objects.get(pk=offer_pk)
         except ObjectDoesNotExist:
@@ -155,72 +156,86 @@ class DealAdmin(admin.ModelAdmin):
 
     @available_request_methods(['GET', 'POST'])
     def pay_view(self, request, deal_pk):
-        if request.method == 'POST':
-            form = DealPayForm(request.POST)
-
-            if form.is_valid():
-                try:
-                    number_invoice_provider = form.cleaned_data['invoice'].num
-                    balance_user = get_balance_user(number_invoice_provider)
-                    amount_money = form.cleaned_data['amount_money']
-
-                    if balance_user > amount_money:
-                        number_invoice_reciever = Deal.objects.get(
-                            pk=deal_pk
-                        ).offer.money_to_invoice.num
-                        pay(
-                            amount_money,
-                            number_invoice_provider,
-                            number_invoice_reciever
-                        )
-                        url = 'admin:deal_confirm_payment'
-                    else:
-                        self.message_user(
-                            request,
-                            'Не хватает денег. '
-                            'Используйте другой счет или заплатите меньше.',
-                            messages.WARNING
-                        )
-                        url = 'admin:deal_pay'
-                except (
-                    requests.exceptions.ConnectionError,
-                    InternalServerError,
-                    UnauthorizedError
-                ):
-                    return render(request, 'errors/500.html')
-                except NotFoundError as error:
-                    self.message_user(
-                        request,
-                        'Расчетный счет не валидный или не существует',
-                        messages.WARNING
-                    )
-                    url = 'admin:deal_pay'
-                except OtherStatusCodes:
-                    return render(request, 'errors/500.html')
-
-                return redirect(
-                    reverse(
-                        url,
-                        kwargs={'deal_pk': deal_pk}
-                    )
-                )
-        else:
+        if request.method == 'GET':
             form = DealPayForm()
-
             # Для вывода в select всех счетов только текущего пользователя
             form.base_fields['invoice'].queryset = \
                 form.base_fields['invoice'].queryset.filter(
                     user=request.user
                 )
+            return render(
+                request,
+                'deal/pay.html',
+                {
+                    'form': form,
+                    'deal_pk': deal_pk,
+                }
+            )
 
-        return render(
-            request,
-            'deal/pay.html',
-            {
-                'form': form,
-                'deal_pk': deal_pk,
-            }
-        )
+        form = DealPayForm(request.POST)
+        if form.is_valid():
+            try:
+                number_invoice_provider = form.cleaned_data['invoice'].num
+                amount_money_payment = form.cleaned_data['amount_money']
+                check_user_balance(number_invoice_provider, amount_money_payment)
+
+                number_invoice_reciever = Deal.objects.get(
+                    pk=deal_pk
+                ).offer.money_to_invoice.num
+                pay(
+                    amount_money_payment,
+                    number_invoice_provider,
+                    number_invoice_reciever
+                )
+
+                return redirect(
+                    reverse(
+                        'admin:deal_confirm_payment',
+                        kwargs={'deal_pk': deal_pk}
+                    )
+                )
+            except (
+                requests.exceptions.ConnectionError,
+                InternalServerError,
+                UnauthorizedError
+            ):
+                return render(request, 'errors/500.html')
+            except NotEnoughMoney:
+                self.message_user(
+                    request,
+                    'Не хватает денег. '
+                    'Используйте другой счет или заплатите меньше.',
+                    messages.WARNING
+                )
+                return redirect(
+                    reverse(
+                        'admin:deal_pay',
+                        kwargs={'deal_pk': deal_pk}
+                    )
+                )
+            except NotFoundError:
+                self.message_user(
+                    request,
+                    'Расчетный счет не валидный или не существует',
+                    messages.WARNING
+                )
+                return redirect(
+                    reverse(
+                        'admin:deal_pay',
+                        kwargs={'deal_pk': deal_pk}
+                    )
+                )
+            except OtherStatusCodes:
+                return render(request, 'errors/500.html')
+        else:
+            return render(
+                request,
+                'deal/pay.html',
+                {
+                    'form': form,
+                    'deal_pk': deal_pk,
+                }
+            )
 
     @available_request_methods(['GET', 'POST'])
     def confirm_payment_view(self, request, deal_pk):
