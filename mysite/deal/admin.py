@@ -140,9 +140,9 @@ class OfferAdmin(RedirectMixin, admin.ModelAdmin):
         context = dict(
             offer=offer
         )
-        return TemplateResponse(
-            request,
-            template='offer/confirm.html',
+        return render(
+            request=request,
+            template_name='offer/confirm.html',
             context=context
         )
 
@@ -175,7 +175,7 @@ class CommissionAdmin(admin.ModelAdmin):
 
 class DealAdmin(RedirectMixin, admin.ModelAdmin):
     def get_queryset(self, request):
-        return super().get_queryset(request).filter(owner=request.user)
+        return super().get_queryset(request).filter(buyer=request.user)
 
     def changelist_view(self, request, extra_context=None):
         return super().changelist_view(request, extra_context)
