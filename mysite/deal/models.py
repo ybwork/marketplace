@@ -89,3 +89,9 @@ class Payment(models.Model):
     amount_money = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.ForeignKey(StatusPayment, on_delete=models.CASCADE)
 
+    class Meta:
+        verbose_name = 'платеж'
+        verbose_name_plural = 'Платежи'
+
+
+
