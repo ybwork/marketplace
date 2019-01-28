@@ -172,8 +172,8 @@ class DealAdmin(admin.ModelAdmin):
         if request.method == 'GET':
             form = DealPayForm()
             # Для вывода в select всех счетов только текущего пользователя
-            form.base_fields['invoice'].queryset = \
-                form.base_fields['invoice'].queryset.filter(
+            form.fields['invoice'].queryset = \
+                form.fields['invoice'].queryset.filter(
                     user=request.user
                 )
             return render(
