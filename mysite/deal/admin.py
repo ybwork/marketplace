@@ -13,6 +13,8 @@ from deal.utils import available_request_methods, get_balance_user, pay, check_u
 from deal.exceptions import InternalServerError, NotFoundError, UnauthorizedError, \
     BadRequestError, OtherStatusCodes, NotEnoughMoney
 
+from user.models import Invoice
+
 
 class OfferListFilter(admin.SimpleListFilter):
     title = 'Предложения'
@@ -29,7 +31,7 @@ class OfferListFilter(admin.SimpleListFilter):
 
 
 class OfferAdmin(admin.ModelAdmin):
-    exclude = ('user', 'money_to_invoice')
+    exclude = ('user',)
     list_display = ('title', 'price')
     list_filter = (OfferListFilter,)
 
@@ -39,25 +41,28 @@ class OfferAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         if obj:
-            return self.is_owner(current_user=request.user, owner_offer=obj.user)
+            return self.is_owner(
+                current_user=request.user,
+                owner_offer=obj.user
+            )
 
     def is_owner(self, current_user, owner_offer):
         return current_user == owner_offer
 
     def has_delete_permission(self, request, obj=None):
         if obj:
-            return self.is_owner(current_user=request.user, owner_offer=obj.user)
+            return self.is_owner(
+                current_user=request.user,
+                owner_offer=obj.user
+            )
 
-    def add_view(self, request, form_url='', extra_context=None):
-        return super().add_view(
-            request,
-            form_url='',
-            extra_context=None
-        )
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'money_to_invoice':
+            kwargs['queryset'] = Invoice.objects.filter(user=request.user)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
-
         try:
             extra_context['offer'] = Offer.objects.get(pk=object_id)
         except ObjectDoesNotExist:
@@ -66,7 +71,12 @@ class OfferAdmin(admin.ModelAdmin):
                 'Объект не найден',
                 messages.WARNING
             )
-            return redirect(reverse('admin:index', current_app=self.admin_site.name))
+            return redirect(
+                reverse(
+                    'admin:index',
+                    current_app=self.admin_site.name
+                )
+            )
 
         return super().change_view(
             request,
