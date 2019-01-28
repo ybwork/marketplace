@@ -85,4 +85,3 @@ def available_request_methods(http_methods=[]):
             return function_to_decorate(self, request, *args, **kwargs)
         return original
     return decorator
-
