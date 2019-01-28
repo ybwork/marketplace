@@ -123,8 +123,14 @@ class OfferAdmin(RedirectMixin, admin.ModelAdmin):
                 type_message=messages.WARNING,
                 redirect_to='admin:index',
             )
+        if offer.user == request.user:
+            return redirect(
+                reverse(
+                    viewname='admin:deal_offer_changelist',
+                )
+            )
         if request.method == 'POST':
-            deal = self.create_deal(request, offer)
+            deal = self.create_deal(request=request, offer=offer)
             return redirect(
                 reverse(
                     viewname='admin:deal_pay',
@@ -148,8 +154,8 @@ class OfferAdmin(RedirectMixin, admin.ModelAdmin):
             }
         )
         return Deal.objects.create(
-            owner=request.user,
-            buyer=offer.user,
+            owner=offer.user,
+            buyer=request.user,
             offer=offer,
             status=status,
             time_on_pay_expire=datetime.now() + timedelta(
@@ -225,10 +231,10 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
                     number_invoice_reciever=number_invoice_reciever
                 )
                 payment = self.create_payment(
-                    deal,
-                    amount_money_payment,
-                    number_invoice_provider,
-                    number_invoice_reciever
+                    deal=deal,
+                    amount_money_payment=amount_money_payment,
+                    number_invoice_provider=number_invoice_provider,
+                    number_invoice_reciever=number_invoice_reciever
                 )
                 return redirect(
                     reverse(
