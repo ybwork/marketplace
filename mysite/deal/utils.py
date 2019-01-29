@@ -6,8 +6,8 @@ from django.shortcuts import redirect
 
 from mysite.settings import API_KEY
 
-from deal.exceptions import InternalServerError, UnauthorizedError, NotFoundError, OtherStatusCodes, \
-    NotEnoughMoney, BadRequestError
+from deal.exceptions import InternalServerError, UnauthorizedError, \
+    NotFoundError, OtherStatusCodes, NotEnoughMoney, BadRequestError
 
 
 def get_balance_user(invoice):
@@ -17,7 +17,6 @@ def get_balance_user(invoice):
         ),
         json={
             'api_key': API_KEY,
-            'invoice': str(invoice)
         }
     )
     check_status_code(req.status_code)

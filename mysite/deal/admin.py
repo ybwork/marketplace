@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from django.contrib import admin, messages
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Subquery
 from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -385,8 +386,15 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
         )
 
 
+class PaymentAdmin(admin.ModelAdmin):
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(
+            deal__buyer=request.user
+        )
+
+
 admin.site.register(Status)
 admin.site.register(Commission, CommissionAdmin)
 admin.site.register(Offer, OfferAdmin)
 admin.site.register(Deal, DealAdmin)
-admin.site.register(Payment)
+admin.site.register(Payment, PaymentAdmin)

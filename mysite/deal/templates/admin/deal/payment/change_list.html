@@ -1,7 +1,6 @@
 {% extends 'admin/change_list.html' %}
 
 {% block result_list %}
-  {% for payment in cl.queryset %}
   <div class="results">
       <table id="result_list">
         <thead>
@@ -31,13 +30,13 @@
                 <td>{{ payment.deal }}</td>
                 <td>{{ payment.status.name }}</td>
                 <td>
-                  <a
-                      href="{% url 'admin:deal_deal_change' payment.deal.pk %}">Посмотреть сделку</a>
+                  <a href="{% url 'admin:deal_deal_change' payment.deal.pk %}">
+                    Посмотреть сделку
+                  </a>
                 </td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-  {% endfor %}
 {% endblock result_list %}
