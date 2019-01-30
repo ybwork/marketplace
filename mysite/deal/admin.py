@@ -208,18 +208,12 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
                 )
         else:
             form = DealPayForm(request.POST)
-
             if form.is_valid():
-                return self.process_work_with_api(
+                return self.pay_process(
                     request=request,
-                    process_func=self.pay_process(
-                        request,
-                        number_invoice_provider=form.cleaned_data[
-                            'invoice'
-                        ].num,
-                        amount_money_payment=form.cleaned_data['amount_money'],
-                        deal_pk=deal_pk
-                    )
+                    number_invoice_provider=form.cleaned_data['invoice'].num,
+                    amount_money_payment=form.cleaned_data['amount_money'],
+                    deal_pk=deal_pk
                 )
 
         return render(
@@ -231,81 +225,38 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
             }
         )
 
-    # def pay_process(self, request, form, deal_pk):
-    #     try:
-    #         number_invoice_provider = form.cleaned_data['invoice'].num
-    #         amount_money_payment = form.cleaned_data['amount_money']
-    #         check_user_balance(
-    #             invoice=number_invoice_provider,
-    #             amount_money_payment=amount_money_payment
-    #         )
-    #
-    #         deal = Deal.objects.get(pk=deal_pk)
-    #         number_invoice_reciever = deal.offer.money_to_invoice.num
-    #         pay(
-    #             amount_money=amount_money_payment,
-    #             number_invoice_provider=number_invoice_provider,
-    #             number_invoice_reciever=number_invoice_reciever
-    #         )
-    #
-    #         payment = self.create_payment(
-    #             deal=deal,
-    #             amount_money_payment=amount_money_payment,
-    #             number_invoice_provider=number_invoice_provider,
-    #             number_invoice_reciever=number_invoice_reciever
-    #         )
-    #         return redirect(
-    #             reverse(
-    #                 viewname='admin:deal_confirm_payment',
-    #                 kwargs={'payment_pk': payment.pk}
-    #             )
-    #         )
-    #     except NotEnoughMoney:
-    #         return self.redirect_with_message(
-    #             request=request,
-    #             message='Не хватает денег. Используйте другой счет или '
-    #                     'заплатите меньше.',
-    #             type_message=messages.WARNING,
-    #             redirect_to='admin:deal_pay',
-    #             deal_pk=deal_pk
-    #         )
-    #     except ObjectDoesNotExist:
-    #         return self.redirect_with_message(
-    #             request=request,
-    #             message='Нет такой сделки',
-    #             type_message=messages.WARNING,
-    #             redirect_to='admin:deal_pay',
-    #             deal_pk=deal_pk
-    #         )
-    #     except NotFoundError:
-    #         return self.redirect_with_message(
-    #             request=request,
-    #             message='Расчетный счет не валидный или не существует',
-    #             type_message=messages.WARNING,
-    #             redirect_to='admin:deal_pay',
-    #             deal_pk=deal_pk
-    #         )
-    #     except (
-    #             requests.exceptions.ConnectionError,
-    #             InternalServerError,
-    #             UnauthorizedError,
-    #             OtherStatusCodes
-    #     ):
-    #         return render(
-    #             request=request,
-    #             template_name='errors/500.html'
-    #         )
-    #
-
-    def process_work_with_api(self, request, process_func):
+    def pay_process(
+            self,
+            request,
+            number_invoice_provider,
+            amount_money_payment,
+            deal_pk
+        ):
         try:
-            process = process_func
-            return self.redirect_with_message(
-                request=request,
-                message=process['success']['message'],
-                type_message=messages.WARNING,
-                redirect_to=process['success']['redirect_to'],
-                process['success']['params']['name']=process['success']['params']['value']
+            check_user_balance(
+                invoice=number_invoice_provider,
+                amount_money_payment=amount_money_payment
+            )
+
+            deal = Deal.objects.get(pk=deal_pk)
+            number_invoice_reciever = deal.offer.money_to_invoice.num
+            pay(
+                amount_money=amount_money_payment,
+                number_invoice_provider=number_invoice_provider,
+                number_invoice_reciever=number_invoice_reciever
+            )
+
+            payment = self.create_payment(
+                deal=deal,
+                amount_money_payment=amount_money_payment,
+                number_invoice_provider=number_invoice_provider,
+                number_invoice_reciever=number_invoice_reciever
+            )
+            return redirect(
+                reverse(
+                    viewname='admin:deal_confirm_payment',
+                    kwargs={'payment_pk': payment.pk}
+                )
             )
         except NotEnoughMoney:
             return self.redirect_with_message(
@@ -343,49 +294,13 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
                 template_name='errors/500.html'
             )
 
-    def pay_process(
-            self,
-            request,
-            deal_pk,
-            number_invoice_provider,
-            amount_money_payment,
-    ):
-        check_user_balance(
-            invoice=number_invoice_provider,
-            amount_money_payment=amount_money_payment
-        )
-        deal = Deal.objects.get(pk=deal_pk)
-        number_invoice_reciever = deal.offer.money_to_invoice.num
-        pay(
-            amount_money=amount_money_payment,
-            number_invoice_provider=number_invoice_provider,
-            number_invoice_reciever=number_invoice_reciever
-        )
-        payment = self.create_payment(
-            deal=deal,
-            amount_money_payment=amount_money_payment,
-            number_invoice_provider=number_invoice_provider,
-            number_invoice_reciever=number_invoice_reciever
-        )
-
-        return {
-            'success': {
-                'message': 'Подтвердите платеж',
-                'redirect_to': 'admin:deal_confirm_payment',
-                'params': {
-                    'name': 'payment_pk',
-                    'value': payment.pk
-                }
-            }
-        }
-
     def create_payment(
             self,
             deal,
             amount_money_payment,
             number_invoice_provider,
             number_invoice_reciever
-    ):
+        ):
         status, created = StatusPayment.objects.get_or_create(
             name='не подтвержден',
             defaults={
@@ -404,60 +319,15 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
     def confirm_payment_view(self, request, payment_pk):
         if request.method == 'GET':
             form = ConfirmPay()
-            return render(
-                request=request,
-                template_name='deal/confirm_payment.html',
-                context={
-                    'form': form,
-                    'payment_pk': payment_pk
-                }
-            )
-
-        form = ConfirmPay(request.POST)
-        if form.is_valid():
-            try:
-                payment = Payment.objects.get(pk=payment_pk)
-                key_payment = confirm_payment(
-                    invoice=payment.number_invoice_provider,
-                    code_confirm=form.cleaned_data['code_confirm']
-                )
-                payment.key = key_payment
-                payment.save()
-
-                # отправим задачу на операцию платежа в celery
-
-                return self.redirect_with_message(
+        else:
+            form = ConfirmPay(request.POST)
+            if form.is_valid():
+                return self.confirm_process(
                     request=request,
-                    message='Платеж обрабатывается. Можете продолжить работу.',
-                    type_message=messages.WARNING,
-                    redirect_to='admin:deal_offer_changelist'
-                )
-            except ObjectDoesNotExist:
-                return self.redirect_with_message(
-                    request=request,
-                    message='Нет такой сделки',
-                    type_message=messages.WARNING,
-                    redirect_to='admin:deal_confirm_payment',
+                    code_confirm=form.cleaned_data['code_confirm'],
                     payment_pk=payment_pk
                 )
-            except (
-                requests.exceptions.ConnectionError,
-                InternalServerError,
-                UnauthorizedError,
-                OtherStatusCodes
-            ):
-                return render(
-                    request=request,
-                    template_name='errors/500.html'
-                )
-            except BadRequestError:
-                return self.redirect_with_message(
-                    request=request,
-                    message='Не правильный код подтверждения',
-                    type_message=messages.WARNING,
-                    redirect_to='admin:deal_confirm_payment',
-                    payment_pk=payment_pk
-                )
+
         return render(
             request=request,
             template_name='deal/confirm_payment.html',
@@ -466,6 +336,58 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
                 'payment_pk': payment_pk
             }
         )
+
+    def confirm_process(
+            self,
+            request,
+            code_confirm,
+            payment_pk
+        ):
+        try:
+            payment = Payment.objects.get(pk=payment_pk)
+            key_payment = confirm_payment(
+                invoice=payment.number_invoice_provider,
+                code_confirm=code_confirm
+            )
+            payment.key = key_payment
+            payment.save()
+
+            # отправим задачу на операцию платежа в celery
+
+            # если celery ответил да, то нужно изменить статус платежа
+
+            return self.redirect_with_message(
+                request=request,
+                message='Платеж обрабатывается. Можете продолжить работу.',
+                type_message=messages.WARNING,
+                redirect_to='admin:deal_offer_changelist'
+            )
+        except ObjectDoesNotExist:
+            return self.redirect_with_message(
+                request=request,
+                message='Нет такой сделки',
+                type_message=messages.WARNING,
+                redirect_to='admin:deal_confirm_payment',
+                payment_pk=payment_pk
+            )
+        except BadRequestError:
+            return self.redirect_with_message(
+                request=request,
+                message='Не правильный код подтверждения',
+                type_message=messages.WARNING,
+                redirect_to='admin:deal_confirm_payment',
+                payment_pk=payment_pk
+            )
+        except (
+                requests.exceptions.ConnectionError,
+                InternalServerError,
+                UnauthorizedError,
+                OtherStatusCodes
+        ):
+            return render(
+                request=request,
+                template_name='errors/500.html'
+            )
 
 
 class PaymentAdmin(admin.ModelAdmin):

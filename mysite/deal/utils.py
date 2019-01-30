@@ -76,6 +76,17 @@ def confirm_payment(invoice, code_confirm):
     return json.loads(req.content)['key']
 
 
+def perform_payment(key):
+    req = requests.post(
+        'http://127.0.0.1:5000/v1/payments/perform',
+        json={
+            'api_key': API_KEY,
+            'key': key
+        }
+    )
+    return check_status_code(req.status_code)
+
+
 def available_request_methods(http_methods=[]):
     def decorator(function_to_decorate):
         def original(self, request, *args, **kwargs):
