@@ -1,8 +1,10 @@
 import decimal
 import json
 import requests
+from django.contrib import messages
+from django.core.exceptions import ObjectDoesNotExist
 
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 
 from mysite.settings import API_KEY
 
@@ -30,16 +32,16 @@ def check_status_code(status_code):
         return True
 
     if status_code == 400:
-        raise BadRequestError()
+        raise BadRequestError('Отсутствуют параметры запроса')
 
     if status_code == 401:
-        raise UnauthorizedError()
+        raise UnauthorizedError('Не авторизован')
 
     if status_code == 404:
-        raise NotFoundError()
+        raise NotFoundError('Объект не найден')
 
     if status_code == 500:
-        raise InternalServerError()
+        raise InternalServerError('Что то пошло не так, попробуйте позже')
 
     raise OtherStatusCodes()
 
@@ -47,7 +49,7 @@ def check_status_code(status_code):
 def check_user_balance(invoice, amount_money_payment):
     balance = get_balance_user(invoice)
     if balance < amount_money_payment:
-        raise NotEnoughMoney()
+        raise NotEnoughMoney('Не хватает денег на счете')
 
 
 def pay(amount_money, number_invoice_provider, number_invoice_reciever):
@@ -95,3 +97,31 @@ def available_request_methods(http_methods=[]):
             return function_to_decorate(self, request, *args, **kwargs)
         return original
     return decorator
+
+
+def handle_api_response(function_to_decorate):
+    def original(self, request, *args, **kwargs):
+        try:
+            return function_to_decorate(self, request, *args, **kwargs)
+        except (
+            NotEnoughMoney,
+            NotFoundError,
+            BadRequestError
+        ) as error:
+            return self.redirect_with_message(
+                request=request,
+                message=str(error),
+                type_message=messages.WARNING,
+                redirect_to=request.META['HTTP_REFERER']
+            )
+        except (
+            requests.exceptions.ConnectionError,
+            InternalServerError,
+            UnauthorizedError,
+            OtherStatusCodes
+        ):
+            return render(
+                request=request,
+                template_name='errors/500.html'
+            )
+    return original

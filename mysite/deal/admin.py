@@ -5,15 +5,13 @@ from django.contrib import admin, messages
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Subquery
 from django.shortcuts import redirect, render
-from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
 from deal.models import Status, Commission, Offer, Deal, Payment, StatusPayment
 from deal.forms import ConfirmPay, DealPayForm
 from deal.utils import available_request_methods, get_balance_user, pay, \
-    check_user_balance, confirm_payment
-from deal.exceptions import InternalServerError, NotFoundError, \
-    UnauthorizedError, BadRequestError, OtherStatusCodes, NotEnoughMoney
+    check_user_balance, confirm_payment, handle_api_response
+from deal.tasks import perform_payment
 
 from user.models import Invoice
 
@@ -38,20 +36,14 @@ class RedirectMixin:
             request,
             message,
             type_message,
-            redirect_to,
-            **kwargs
+            redirect_to
     ):
         self.message_user(
             request,
             message,
             type_message
         )
-        return redirect(
-            reverse(
-                redirect_to,
-                kwargs=kwargs
-            )
-        )
+        return redirect(redirect_to)
 
 
 class OfferAdmin(RedirectMixin, admin.ModelAdmin):
@@ -210,12 +202,11 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
             form = DealPayForm(request.POST)
             if form.is_valid():
                 return self.pay_process(
-                    request=request,
+                    request,
                     number_invoice_provider=form.cleaned_data['invoice'].num,
                     amount_money_payment=form.cleaned_data['amount_money'],
                     deal_pk=deal_pk
                 )
-
         return render(
             request=request,
             template_name='deal/pay.html',
@@ -225,6 +216,7 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
             }
         )
 
+    @handle_api_response
     def pay_process(
             self,
             request,
@@ -232,87 +224,47 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
             amount_money_payment,
             deal_pk
         ):
-        try:
-            check_user_balance(
-                invoice=number_invoice_provider,
-                amount_money_payment=amount_money_payment
-            )
+        check_user_balance(
+            invoice=number_invoice_provider,
+            amount_money_payment=amount_money_payment
+        )
 
+        try:
             deal = Deal.objects.get(pk=deal_pk)
             number_invoice_reciever = deal.offer.money_to_invoice.num
-            pay(
-                amount_money=amount_money_payment,
-                number_invoice_provider=number_invoice_provider,
-                number_invoice_reciever=number_invoice_reciever
-            )
-
-            payment = self.create_payment(
-                deal=deal,
-                amount_money_payment=amount_money_payment,
-                number_invoice_provider=number_invoice_provider,
-                number_invoice_reciever=number_invoice_reciever
-            )
-            return redirect(
-                reverse(
-                    viewname='admin:deal_confirm_payment',
-                    kwargs={'payment_pk': payment.pk}
-                )
-            )
-        except NotEnoughMoney:
-            return self.redirect_with_message(
-                request=request,
-                message='Не хватает денег. Используйте другой счет или '
-                        'заплатите меньше.',
-                type_message=messages.WARNING,
-                redirect_to='admin:deal_pay',
-                deal_pk=deal_pk
-            )
         except ObjectDoesNotExist:
             return self.redirect_with_message(
                 request=request,
                 message='Нет такой сделки',
                 type_message=messages.WARNING,
-                redirect_to='admin:deal_pay',
-                deal_pk=deal_pk
-            )
-        except NotFoundError:
-            return self.redirect_with_message(
-                request=request,
-                message='Расчетный счет не валидный или не существует',
-                type_message=messages.WARNING,
-                redirect_to='admin:deal_pay',
-                deal_pk=deal_pk
-            )
-        except (
-                requests.exceptions.ConnectionError,
-                InternalServerError,
-                UnauthorizedError,
-                OtherStatusCodes
-        ):
-            return render(
-                request=request,
-                template_name='errors/500.html'
+                redirect_to=request.META['HTTP_REFERER'],
             )
 
-    def create_payment(
-            self,
-            deal,
-            amount_money_payment,
-            number_invoice_provider,
-            number_invoice_reciever
-        ):
+        pay(
+            amount_money=amount_money_payment,
+            number_invoice_provider=number_invoice_provider,
+            number_invoice_reciever=number_invoice_reciever
+        )
+
         status, created = StatusPayment.objects.get_or_create(
             name='не подтвержден',
             defaults={
                 'name': 'не подтвержден'
             }
         )
-        return Payment.objects.create(
+        payment = Payment.objects.create(
             deal=deal,
             number_invoice_provider=number_invoice_provider,
             number_invoice_reciever=number_invoice_reciever,
             amount_money=amount_money_payment,
             status=status
+        )
+
+        return redirect(
+            reverse(
+                viewname='admin:deal_confirm_payment',
+                kwargs={'payment_pk': payment.pk}
+            )
         )
 
     @available_request_methods(['GET', 'POST'])
@@ -322,12 +274,11 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
         else:
             form = ConfirmPay(request.POST)
             if form.is_valid():
-                return self.confirm_process(
+                return self.confirm_payment_process(
                     request=request,
                     code_confirm=form.cleaned_data['code_confirm'],
                     payment_pk=payment_pk
                 )
-
         return render(
             request=request,
             template_name='deal/confirm_payment.html',
@@ -337,7 +288,8 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
             }
         )
 
-    def confirm_process(
+    @handle_api_response
+    def confirm_payment_process(
             self,
             request,
             code_confirm,
@@ -353,40 +305,24 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
             payment.save()
 
             # отправим задачу на операцию платежа в celery
-
             # если celery ответил да, то нужно изменить статус платежа
 
-            return self.redirect_with_message(
+            self.message_user(
                 request=request,
-                message='Платеж обрабатывается. Можете продолжить работу.',
-                type_message=messages.WARNING,
-                redirect_to='admin:deal_offer_changelist'
+                message='Платеж обрабатывается. Можете продолжить работу',
+                level=messages.SUCCESS,
+            )
+            return redirect(
+                reverse(
+                    viewname='admin:deal_offer_changelist'
+                )
             )
         except ObjectDoesNotExist:
             return self.redirect_with_message(
                 request=request,
                 message='Нет такой сделки',
                 type_message=messages.WARNING,
-                redirect_to='admin:deal_confirm_payment',
-                payment_pk=payment_pk
-            )
-        except BadRequestError:
-            return self.redirect_with_message(
-                request=request,
-                message='Не правильный код подтверждения',
-                type_message=messages.WARNING,
-                redirect_to='admin:deal_confirm_payment',
-                payment_pk=payment_pk
-            )
-        except (
-                requests.exceptions.ConnectionError,
-                InternalServerError,
-                UnauthorizedError,
-                OtherStatusCodes
-        ):
-            return render(
-                request=request,
-                template_name='errors/500.html'
+                redirect_to=request.META['HTTP_REFERER'],
             )
 
 

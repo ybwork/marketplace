@@ -6,15 +6,15 @@ class UnauthorizedError(Exception):
     pass
 
 
+class OtherStatusCodes(Exception):
+    pass
+
+
 class NotFoundError(Exception):
     pass
 
 
 class BadRequestError(Exception):
-    pass
-
-
-class OtherStatusCodes(Exception):
     pass
 
 
