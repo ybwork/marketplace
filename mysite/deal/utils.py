@@ -13,6 +13,32 @@ from deal.exceptions import InternalServerError, UnauthorizedError, \
 from mysite.settings import API_DOMEN
 
 
+def check_status_code(function_to_decorate):
+    def original(url, method, params):
+        response = function_to_decorate(url, method, params)
+
+        if response.status_code == 200:
+            return parse_response(response)
+
+        if response.status_code == 400:
+            raise BadRequestError('Отсутствуют параметры запроса')
+
+        if response.status_code == 401:
+            raise UnauthorizedError('Не авторизован')
+
+        if response.status_code == 404:
+            raise NotFoundError('Объект не найден')
+
+        if response.status_code == 500:
+            raise InternalServerError('Что то пошло не так, попробуйте позже')
+        raise OtherStatusCodes()
+    return original
+
+
+def parse_response(response):
+    return json.loads(response.content)
+
+
 def handle_api_response(function_to_decorate):
     def original(self, request, *args, **kwargs):
         try:
@@ -52,36 +78,12 @@ def get_balance_user(invoice):
     return decimal.Decimal(response['balance'])
 
 
+@check_status_code
 def send_request(url, method, params):
-    req = getattr(requests, method)(
+    return getattr(requests, method)(
         '{domen}{url}'.format(domen=API_DOMEN, url=url),
         json=params
     )
-    check_status_code(status_code=req.status_code)
-    return parse_response(response=req.content)
-
-
-def check_status_code(status_code):
-    if status_code == 200:
-        return True
-
-    if status_code == 400:
-        raise BadRequestError('Отсутствуют параметры запроса')
-
-    if status_code == 401:
-        raise UnauthorizedError('Не авторизован')
-
-    if status_code == 404:
-        raise NotFoundError('Объект не найден')
-
-    if status_code == 500:
-        raise InternalServerError('Что то пошло не так, попробуйте позже')
-
-    raise OtherStatusCodes()
-
-
-def parse_response(response):
-    return json.loads(response)
 
 
 def check_user_balance(invoice, amount_money_payment):
