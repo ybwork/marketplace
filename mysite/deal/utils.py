@@ -2,7 +2,6 @@ import decimal
 import json
 import requests
 from django.contrib import messages
-from django.core.exceptions import ObjectDoesNotExist
 
 from django.shortcuts import redirect, render
 
