@@ -14,6 +14,10 @@
                  <div class="clear"></div>
               </th>
               <th scope="col" class="sortable column-price">
+                  <div class="text"><a href="?o=1">Статус</a></div>
+                  <div class="clear"></div>
+              </th>
+              <th scope="col" class="sortable column-price">
                  <div class="text"><a href="?o=1">Действия</a></div>
                  <div class="clear"></div>
               </th>
@@ -22,8 +26,9 @@
         <tbody>
           {% for deal in cl.queryset %}
             <tr class="row2">
-                <td class="field-name"> {{ deal.offer.title }}</td>
-                <td class="field-price">{{ deal.offer.price }}</td>
+                <td>{{ deal.offer.title }}</td>
+                <td>{{ deal.offer.price }}</td>
+                <td>{{ deal.status }}</td>
                 <td>
                   <a href="{% url 'admin:deal_deal_change' deal.pk %}">
                     Подробности

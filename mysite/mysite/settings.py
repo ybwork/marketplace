@@ -125,5 +125,7 @@ USE_L10N = True
 API_KEY = 'ccc42a8314596799'
 API_DOMEN = 'http://127.0.0.1:5000'
 
+COMMISSION = 5
+
 from .local_settings import *
 

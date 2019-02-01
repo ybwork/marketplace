@@ -4,28 +4,6 @@ from django.db import models
 from user.models import Invoice
 
 
-class Status(models.Model):
-    name = models.CharField(max_length=50)
-
-    class Meta:
-        verbose_name = 'статус сделки'
-        verbose_name_plural = 'Статусы сделки'
-
-    def __str__(self):
-        return self.name
-
-
-class Commission(models.Model):
-    percent = models.DecimalField(max_digits=10, decimal_places=2)
-
-    class Meta:
-        verbose_name = 'комиссия'
-        verbose_name_plural = 'Комиссия'
-
-    def __str__(self):
-        return '{} %'.format(self.percent)
-
-
 class Offer(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField('Заголовок', max_length=255)
@@ -36,6 +14,17 @@ class Offer(models.Model):
         Invoice,
         on_delete=models.CASCADE,
         verbose_name='Деньги на счет'
+    )
+    AVAILABLE = 'доступно'
+    NOT_AVAILABLE = 'недоступно'
+    STATUS_CHOICES = (
+        (AVAILABLE, 'доступно'),
+        (NOT_AVAILABLE, 'недоступно'),
+    )
+    status = models.CharField(
+        max_length=100,
+        choices=STATUS_CHOICES,
+        default=AVAILABLE
     )
 
     class Meta:
@@ -62,10 +51,19 @@ class Deal(models.Model):
         on_delete=models.CASCADE,
         verbose_name='Предложение'
     )
-    status = models.ForeignKey(
-        Status,
-        on_delete=models.CASCADE,
-        verbose_name='Статус'
+    ACTIVE = 'активна'
+    COMPLETED = 'завершена'
+    CANCELED = 'отменена'
+    STATUS_CHOICES = (
+        (ACTIVE, 'активна'),
+        (COMPLETED, 'завершена'),
+        (CANCELED, 'отменена')
+    )
+    status = models.CharField(
+        verbose_name='Статус',
+        max_length=100,
+        choices=STATUS_CHOICES,
+        default=ACTIVE
     )
     time_on_pay_expire = models.DateTimeField('Время на оплату истекает')
 
@@ -77,17 +75,23 @@ class Deal(models.Model):
         return self.offer.title
 
 
-class StatusPayment(models.Model):
-    name = models.CharField(max_length=255, db_index=True)
-
-
 class Payment(models.Model):
     deal = models.ForeignKey(Deal, on_delete=models.CASCADE)
     number_invoice_provider = models.CharField(max_length=5)
     number_invoice_reciever = models.CharField(max_length=5)
     key = models.CharField(max_length=5, default='')
     amount_money = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.ForeignKey(StatusPayment, on_delete=models.CASCADE)
+    NOT_CONFIRMED = 'не подтвержден'
+    PAID = 'оплачен'
+    STATUS_CHOICES = (
+        (NOT_CONFIRMED, 'не подтвержден'),
+        (PAID, 'оплачен')
+    )
+    status = models.CharField(
+        max_length=100,
+        choices=STATUS_CHOICES,
+        default=NOT_CONFIRMED
+    )
 
     class Meta:
         verbose_name = 'платеж'

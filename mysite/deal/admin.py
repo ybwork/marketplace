@@ -2,10 +2,11 @@ from datetime import datetime, timedelta
 
 from django.contrib import admin, messages
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
 
-from deal.models import Status, Commission, Offer, Deal, Payment, StatusPayment
+from deal.models import Offer, Deal, Payment
 from deal.forms import ConfirmPay, DealPayForm
 from deal.utils import available_request_methods, get_balance_user, pay, \
     check_user_balance, confirm_payment, handle_api_response
@@ -49,26 +50,31 @@ class OfferAdmin(RedirectMixin, admin.ModelAdmin):
     list_display = ('title', 'price')
     list_filter = (OfferListFilter,)
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(status=self.model.AVAILABLE)
+
     def save_model(self, request, obj, form, change):
         obj.user = request.user
         obj.save()
 
     def has_change_permission(self, request, obj=None):
-        if obj:
-            return self.is_owner(
-                current_user=request.user,
-                owner_offer=obj.user
-            )
+        if request.user.is_superuser or not obj:
+            return True
+
+        if self.is_owner(current_user=request.user, owner_offer=obj.user):
+            return True
+        return False
 
     def is_owner(self, current_user, owner_offer):
         return current_user == owner_offer
 
     def has_delete_permission(self, request, obj=None):
-        if obj:
-            return self.is_owner(
-                current_user=request.user,
-                owner_offer=obj.user
-            )
+        if request.user.is_superuser or not obj:
+            return True
+
+        if self.is_owner(current_user=request.user, owner_offer=obj.user):
+            return True
+        return False
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == 'money_to_invoice':
@@ -121,7 +127,17 @@ class OfferAdmin(RedirectMixin, admin.ModelAdmin):
                 )
             )
         if request.method == 'POST':
-            deal = self.create_deal(request=request, offer=offer)
+            with transaction.atomic():
+                deal = Deal.objects.create(
+                    owner=offer.user,
+                    buyer=request.user,
+                    offer=offer,
+                    time_on_pay_expire=datetime.now() + timedelta(
+                        hours=offer.limit_hours_on_pay
+                    )
+                )
+                offer.status = offer.NOT_AVAILABLE
+                offer.save()
             return redirect(
                 reverse(
                     viewname='admin:deal_pay',
@@ -137,23 +153,6 @@ class OfferAdmin(RedirectMixin, admin.ModelAdmin):
             context=context
         )
 
-    def create_deal(self, request, offer):
-        status, created = Status.objects.get_or_create(
-            name='Активна',
-            defaults={
-                'name': 'Активна'
-            }
-        )
-        return Deal.objects.create(
-            owner=offer.user,
-            buyer=request.user,
-            offer=offer,
-            status=status,
-            time_on_pay_expire=datetime.now() + timedelta(
-                hours=offer.limit_hours_on_pay
-            )
-        )
-
 
 class CommissionAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
@@ -166,6 +165,8 @@ class CommissionAdmin(admin.ModelAdmin):
 
 class DealAdmin(RedirectMixin, admin.ModelAdmin):
     def get_queryset(self, request):
+        if request.user.is_superuser:
+            return super().get_queryset(request).filter()
         return super().get_queryset(request).filter(buyer=request.user)
 
     def changelist_view(self, request, extra_context=None):
@@ -245,18 +246,11 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
             number_invoice_reciever=number_invoice_reciever
         )
 
-        status, created = StatusPayment.objects.get_or_create(
-            name='не подтвержден',
-            defaults={
-                'name': 'не подтвержден'
-            }
-        )
         payment = Payment.objects.create(
             deal=deal,
             number_invoice_provider=number_invoice_provider,
             number_invoice_reciever=number_invoice_reciever,
             amount_money=amount_money_payment,
-            status=status
         )
 
         return redirect(
@@ -302,10 +296,6 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
             )
             payment.key = key_payment
             payment.save()
-
-            # отправим задачу на операцию платежа в celery
-            # если celery ответил да, то нужно изменить статус платежа
-
             self.message_user(
                 request=request,
                 message='Платеж обрабатывается. Можете продолжить работу',
@@ -327,13 +317,11 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
 
 class PaymentAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
-        return super().get_queryset(request).filter(
-            deal__buyer=request.user
-        )
+        if request.user.is_superuser:
+            return super().get_queryset(request).filter()
+        return super().get_queryset(request).filter(deal__buyer=request.user)
 
 
-admin.site.register(Status)
-admin.site.register(Commission, CommissionAdmin)
 admin.site.register(Offer, OfferAdmin)
 admin.site.register(Deal, DealAdmin)
 admin.site.register(Payment, PaymentAdmin)
