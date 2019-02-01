@@ -1,4 +1,5 @@
 import decimal
+import functools
 import json
 import requests
 from django.contrib import messages
@@ -14,6 +15,7 @@ from mysite.settings import API_DOMEN
 
 
 def check_status_code(function_to_decorate):
+    @functools.wraps(function_to_decorate)
     def original(url, method, params):
         response = function_to_decorate(url, method, params)
 
@@ -129,8 +131,9 @@ def perform_payment(key):
     )
 
 
-def available_request_methods(http_methods=[]):
+def available_request_methods(http_methods):
     def decorator(function_to_decorate):
+        @functools.wraps(function_to_decorate)
         def original(self, request, *args, **kwargs):
             if request.method not in http_methods:
                 return redirect(request.META['HTTP_REFERER'])

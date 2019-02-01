@@ -1,9 +1,7 @@
-import requests
 from datetime import datetime, timedelta
 
 from django.contrib import admin, messages
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Subquery
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
 
@@ -171,6 +169,7 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
         return super().get_queryset(request).filter(buyer=request.user)
 
     def changelist_view(self, request, extra_context=None):
+        print(perform_payment.delay())
         return super().changelist_view(request, extra_context)
 
     def get_urls(self):
