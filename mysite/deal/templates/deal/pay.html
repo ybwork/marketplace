@@ -1,17 +1,17 @@
 {% extends "admin/base_site.html" %}
 
 {% block content %}
-  <form action="{% url 'admin:deal_pay' view.kwargs.deal_pk %}" method="POST">
+  <form action="{% url 'admin:deal_pay' deal_pk %}" method="POST">
     {% csrf_token %}
     {{ form.non_field_errors }}
 
-    {{ form.amount.errors }}
+    {{ form.amount_money.errors }}
     <p>
         <label for="{{ form.amount.id_for_label }}">Сумма:</label>
-        {{ form.amount }}
+        {{ form.amount_money }}
     </p>
 
-    {{ form.invoice.errors }}
+    {{ form.number_invoice.errors }}
     <p>
       <label for="{{ form.invoice.id_for_label }}">Счёт:</label>
       {{ form.invoice }}
