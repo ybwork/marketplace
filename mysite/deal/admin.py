@@ -3,14 +3,14 @@ from datetime import datetime, timedelta
 from django.contrib import admin, messages
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
+from django.db.models import Sum
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
 
 from deal.models import Offer, Deal, Payment
 from deal.forms import ConfirmPay, DealPayForm
 from deal.utils import available_request_methods, get_balance_user, pay, \
-    check_user_balance, confirm_payment, handle_api_response
-from deal.tasks import perform_payment
+    check_user_balance, confirm_payment, handle_api_response, perform_payment
 
 from user.models import Invoice
 
@@ -46,12 +46,9 @@ class RedirectMixin:
 
 
 class OfferAdmin(RedirectMixin, admin.ModelAdmin):
-    exclude = ('user',)
+    exclude = ('user', 'status')
     list_display = ('title', 'price')
     list_filter = (OfferListFilter,)
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).filter(status=self.model.AVAILABLE)
 
     def save_model(self, request, obj, form, change):
         obj.user = request.user
@@ -111,23 +108,30 @@ class OfferAdmin(RedirectMixin, admin.ModelAdmin):
         return my_urls + urls
 
     def confirm_offer_view(self, request, offer_pk):
-        try:
-            offer = Offer.objects.get(pk=offer_pk)
-        except ObjectDoesNotExist:
-            return self.redirect_with_message(
-                request=request,
-                message='Предложение не найдено',
-                type_message=messages.WARNING,
-                redirect_to='admin:index',
-            )
-        if offer.user == request.user:
-            return redirect(
-                reverse(
-                    viewname='admin:deal_offer_changelist',
+        with transaction.atomic():
+            try:
+                offer = Offer.objects.select_for_update().get(pk=offer_pk)
+            except ObjectDoesNotExist:
+                return self.redirect_with_message(
+                    request=request,
+                    message='Предложение не найдено',
+                    type_message=messages.WARNING,
+                    redirect_to='admin:index',
                 )
-            )
-        if request.method == 'POST':
-            with transaction.atomic():
+            if offer.status == offer.NOT_AVAILABLE:
+                return self.redirect_with_message(
+                    request=request,
+                    message='Предложение больше недоступно',
+                    type_message=messages.WARNING,
+                    redirect_to='admin:deal_offer_changelist',
+                )
+            if offer.user == request.user:
+                return redirect(
+                    reverse(
+                        viewname='admin:deal_offer_changelist',
+                    )
+                )
+            if request.method == 'POST':
                 deal = Deal.objects.create(
                     owner=offer.user,
                     buyer=request.user,
@@ -138,39 +142,36 @@ class OfferAdmin(RedirectMixin, admin.ModelAdmin):
                 )
                 offer.status = offer.NOT_AVAILABLE
                 offer.save()
-            return redirect(
-                reverse(
-                    viewname='admin:deal_pay',
-                    args=[deal.pk]
+                return redirect(
+                    reverse(
+                        viewname='admin:deal_pay',
+                        args=[deal.pk]
+                    )
                 )
+            context = dict(
+                offer=offer
             )
-        context = dict(
-            offer=offer
-        )
-        return render(
-            request=request,
-            template_name='offer/confirm.html',
-            context=context
-        )
-
-
-class CommissionAdmin(admin.ModelAdmin):
-    def has_add_permission(self, request):
-        if not request.user.is_superuser:
-            return False
-        if Commission.objects.exists():
-            return False
-        return True
+            return render(
+                request=request,
+                template_name='offer/confirm.html',
+                context=context
+            )
 
 
 class DealAdmin(RedirectMixin, admin.ModelAdmin):
     def get_queryset(self, request):
         if request.user.is_superuser:
-            return super().get_queryset(request).filter()
-        return super().get_queryset(request).filter(buyer=request.user)
+            return super().get_queryset(request).filter(
+                payment__status=Payment.PAID
+            ).annotate(paid=Sum('payment__amount_money'))
+
+        return super().get_queryset(request).filter(
+            buyer=request.user
+        ).filter(
+            payment__status=Payment.PAID
+        ).annotate(paid=Sum('payment__amount_money'))
 
     def changelist_view(self, request, extra_context=None):
-        print(perform_payment.delay())
         return super().changelist_view(request, extra_context)
 
     def get_urls(self):
@@ -290,20 +291,26 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
         ):
         try:
             payment = Payment.objects.get(pk=payment_pk)
+            check_user_balance(
+                invoice=payment.number_invoice_provider,
+                amount_money_payment=payment.amount_money
+            )
             key_payment = confirm_payment(
                 invoice=payment.number_invoice_provider,
                 code_confirm=code_confirm
             )
+            perform_payment(key=key_payment)
             payment.key = key_payment
+            payment.status = payment.PAID
             payment.save()
             self.message_user(
                 request=request,
-                message='Платеж обрабатывается. Можете продолжить работу',
+                message='Оплачено',
                 level=messages.SUCCESS,
             )
             return redirect(
                 reverse(
-                    viewname='admin:deal_offer_changelist'
+                    viewname='admin:deal_deal_changelist'
                 )
             )
         except ObjectDoesNotExist:
@@ -318,7 +325,7 @@ class DealAdmin(RedirectMixin, admin.ModelAdmin):
 class PaymentAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         if request.user.is_superuser:
-            return super().get_queryset(request).filter()
+            return super().get_queryset(request)
         return super().get_queryset(request).filter(deal__buyer=request.user)
 
 

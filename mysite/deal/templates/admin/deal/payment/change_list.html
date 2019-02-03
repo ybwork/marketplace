@@ -28,7 +28,7 @@
             <tr class="row2">
                 <td>{{ payment.amount_money }}</td>
                 <td>{{ payment.deal }}</td>
-                <td>{{ payment.status.name }}</td>
+                <td>{{ payment.status }}</td>
                 <td>
                   <a href="{% url 'admin:deal_deal_change' payment.deal.pk %}">
                     Посмотреть сделку

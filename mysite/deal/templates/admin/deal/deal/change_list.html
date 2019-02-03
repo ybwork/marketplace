@@ -14,6 +14,10 @@
                  <div class="clear"></div>
               </th>
               <th scope="col" class="sortable column-price">
+                 <div class="text"><a href="?o=1">Оплачено</a></div>
+                 <div class="clear"></div>
+              </th>
+              <th scope="col" class="sortable column-price">
                   <div class="text"><a href="?o=1">Статус</a></div>
                   <div class="clear"></div>
               </th>
@@ -28,6 +32,7 @@
             <tr class="row2">
                 <td>{{ deal.offer.title }}</td>
                 <td>{{ deal.offer.price }}</td>
+                <td>{{ deal.paid }} руб.</td>
                 <td>{{ deal.status }}</td>
                 <td>
                   <a href="{% url 'admin:deal_deal_change' deal.pk %}">

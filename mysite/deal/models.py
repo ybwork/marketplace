@@ -24,7 +24,7 @@ class Offer(models.Model):
     status = models.CharField(
         max_length=100,
         choices=STATUS_CHOICES,
-        default=AVAILABLE
+        default=AVAILABLE,
     )
 
     class Meta:
@@ -63,7 +63,7 @@ class Deal(models.Model):
         verbose_name='Статус',
         max_length=100,
         choices=STATUS_CHOICES,
-        default=ACTIVE
+        default=ACTIVE,
     )
     time_on_pay_expire = models.DateTimeField('Время на оплату истекает')
 
@@ -90,7 +90,7 @@ class Payment(models.Model):
     status = models.CharField(
         max_length=100,
         choices=STATUS_CHOICES,
-        default=NOT_CONFIRMED
+        default=NOT_CONFIRMED,
     )
 
     class Meta:
