@@ -25,6 +25,7 @@ class Offer(models.Model):
         max_length=100,
         choices=STATUS_CHOICES,
         default=AVAILABLE,
+        db_index=True
     )
 
     class Meta:
@@ -64,6 +65,7 @@ class Deal(models.Model):
         max_length=100,
         choices=STATUS_CHOICES,
         default=ACTIVE,
+        db_index=True
     )
     time_on_pay_expire = models.DateTimeField('Время на оплату истекает')
 
@@ -91,6 +93,7 @@ class Payment(models.Model):
         max_length=100,
         choices=STATUS_CHOICES,
         default=NOT_CONFIRMED,
+        db_index=True
     )
 
     class Meta:

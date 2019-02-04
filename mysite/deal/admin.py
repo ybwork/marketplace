@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 from django.contrib import admin, messages
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Sum, Value as V
+from django.db.models.functions import Coalesce
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
 
@@ -161,15 +162,13 @@ class OfferAdmin(RedirectMixin, admin.ModelAdmin):
 class DealAdmin(RedirectMixin, admin.ModelAdmin):
     def get_queryset(self, request):
         if request.user.is_superuser:
-            return super().get_queryset(request).filter(
-                payment__status=Payment.PAID
-            ).annotate(paid=Sum('payment__amount_money'))
+            return super().get_queryset(request).annotate(
+                paid=Coalesce(Sum('payment__amount_money'), V(0))
+            )
 
         return super().get_queryset(request).filter(
             buyer=request.user
-        ).filter(
-            payment__status=Payment.PAID
-        ).annotate(paid=Sum('payment__amount_money'))
+        ).annotate(paid=Coalesce(Sum('payment__amount_money'), V(0)))
 
     def changelist_view(self, request, extra_context=None):
         return super().changelist_view(request, extra_context)
