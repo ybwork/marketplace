@@ -13,7 +13,7 @@ class InvoiceAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         if request.user.is_superuser:
-            return super().get_queryset(request).filter()
+            return super().get_queryset(request)
         return super().get_queryset(request).filter(user=request.user.pk)
 
 
