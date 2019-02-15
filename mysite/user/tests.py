@@ -17,7 +17,7 @@ class InvoiceAdminTests(TestCase):
             is_superuser=True
         )
 
-        user = User.objects.create_user(
+        self.user = user = User.objects.create_user(
             username='mike',
             email='mike@gmail.com',
             password='asdf1234~',
@@ -35,6 +35,14 @@ class InvoiceAdminTests(TestCase):
         response = self.client.post(reverse('admin:user_invoice_add'), {'num': 'x23md'})
         self.assertEqual(Invoice.objects.last().user, response.wsgi_request.user)
 
-    # def test_superuser_sees_all_invoices(self):
-    #     response = self.client.get(reverse('admin:user_invoice_changelist'))
-    #     print(response.context)
+    def test_superuser_sees_all_invoices(self):
+        self.client.login(username='mike', password='asdf1234~')
+        Invoice.objects.bulk_create([
+            Invoice(num='aaa', user=self.user),
+            Invoice(num='bbb', user=self.user)
+        ])
+
+        self.client.login(username='admin', password='asdf1234@')
+        response = self.client.get(reverse('admin:user_invoice_changelist'))
+        invoice_list = response.context['cl'].queryset
+        self.assertQuerysetEqual(invoice_list, ['<Invoice: bbb>', '<Invoice: aaa>'])
