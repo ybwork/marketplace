@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from user.models import Invoice
+from deal.tasks import add
 
 
 class InvoiceAdmin(admin.ModelAdmin):
@@ -11,6 +12,7 @@ class InvoiceAdmin(admin.ModelAdmin):
         obj.save()
 
     def get_queryset(self, request):
+        add.delay(1, 2)
         if request.user.is_superuser:
             return super().get_queryset(request).filter()
         return super().get_queryset(request).filter(user=request.user.pk)
