@@ -4,4 +4,4 @@ from celery import shared_task
 
 @shared_task
 def move():
-    return 1
+    print('test')
