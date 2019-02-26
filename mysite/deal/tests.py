@@ -61,20 +61,22 @@ class OfferAdminTests(TestCase):
         self.client = Client()
 
     def test_save_offer_with_current_user(self):
-        # self.client.login(
-        #     username=self.user.username,
-        #     password=self.__user_password
-        # )
-        # response = self.client.post(
-        #     path=reverse('admin:deal_offer_add'),
-        #     data={
-        #         'title': 'Offer 1',
-        #         'description': '...',
-        #         'price': 100,
-        #         'limit_hours_on_pay': 1,
-        #         'money_to_invoice': self.invoice
-        #     }
-        # )
+        self.client.login(
+            username=self.user.username,
+            password=self.__user_password
+        )
+        response = self.client.post(
+            path=reverse('admin:deal_offer_add'),
+            data={
+                'user': self.user,
+                'title': 'Offer 1',
+                'description': '...',
+                'price': 100,
+                'limit_hours_on_pay': 1,
+                'money_to_invoice': self.invoice
+            }
+        )
+        # print(Offer.objects.)
         # self.assertEqual(Offer.objects.last(), response.wsgi_request.user)
         # print(dir(response))
         # print(response.status_code)
